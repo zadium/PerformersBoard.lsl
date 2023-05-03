@@ -3,9 +3,9 @@
     @description:
 
     @author: Zai Dium
-    @version: 0.1
-    @updated: "2023-05-03 16:43:09"
-    @revision: 29
+    @version: 0.11
+    @updated: "2023-05-03 18:52:26"
+    @revision: 69
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -15,6 +15,7 @@
 */
 
 //* settings
+
 integer warnBefore = 1; //* in minutes
 integer warnTimes = 4; //* in minutes
 integer roundTime = 1; //* in minutes, this fix the time to start at right time in minutes
@@ -29,6 +30,11 @@ integer interval = 1;
 //* variables
 
 string HomeURI;
+
+integer maxLineLength = 32;
+integer maxNameLength = 20;
+integer maxNumberLength = 4;
+integer maxTimeLength = 5;
 
 /**
     Utils
@@ -79,7 +85,9 @@ printText(string s)
     Script
 */
 
-list performers = [];
+list id_list = [];
+list name_list = [];
+list time_list = [];
 
 integer endTime = 0;
 key performerID = NULL_KEY;
@@ -169,7 +177,7 @@ list getMenuList(key id) {
         if (id == performerID)
             l += ["Logout", "Extend 15m"];
         else if (performerID == NULL_KEY) {
-            if (isperformer(id))
+            if (isPerformer(id))
                 l += ["as Performer", "as Guest"];
             else
                 l += ["-", "-"];
@@ -236,31 +244,36 @@ string timeToStr(integer time)
     return llList2String(t, 3)+":"+llList2String(t, 4);
 }
 
-integer isperformer(key id)
+integer isPerformer(key id)
 {
-    if (llListFindList(performers, [llGetDisplayName(id)])>=0)
+    if (llListFindList(id_list, [llGetDisplayName(id)])>=0)
         return TRUE;
     else
         return FALSE;
 }
 
-login(key id, integer time)
+start(key id, integer time)
 {
     if (performerID != NULL_KEY)
     {
-        llRegionSayTo(id, 0, "You can not login while other performer have playing");
+        llRegionSayTo(id, 0, "You can not start while other performer is started");
     }
     else
     {
-        //* 60 seconds and 15 min, we round it to 15 min
-        integer startTime = llRound((float)((float)llGetUnixTime() /((float)roundTime * 60)))*roundTime*60;
-        //llOwnerSay("time:"+(string)time);
-        endTime = startTime + (time * 60); //* 60 seconds
-
-        performerID = id;
+        if (time>0)
+        {
+            //* 60 seconds and 15 min, we round it to 15 min
+            integer startTime = llRound((float)((float)llGetUnixTime() /((float)roundTime * 60)))*roundTime*60;
+            //llOwnerSay("time:"+(string)time);
+            endTime = startTime + (time * 60); //* 60 seconds
+            performerID = id;
+            llRegionSayTo(performerID, 0, "Your time from " + timeToStr(startTime) + " to " +timeToStr(endTime));
+        }
+        else
+        {
+             endTime = 0;
+        }
         llSetPayPrice(PAY_HIDE, moneyList);
-        llRegionSayTo(performerID, 0, "Your time from " + timeToStr(startTime) + " to " +timeToStr(endTime));
-
         llSetTimerEvent(interval);
         updateText();
     }
@@ -297,11 +310,112 @@ readNotecard()
 {
     if (llGetInventoryKey(notecardName) != NULL_KEY)
     {
-        performers = [];
+        clear();
         llOwnerSay("Reading notecard");
         notecardLine = 0;
         notecardQueryId = llGetNotecardLine(notecardName, notecardLine);
     }
+}
+
+string getHeader() {
+    return "Name, Time";
+}
+
+string getItem(integer index, integer full)
+{
+    string s;
+    s = alignTextLeft(llList2String(name_list, index), maxLineLength - maxTimeLength, " ");
+    integer time;
+    string t = ":";
+    time = llList2Integer(time_list, index);
+    if (time > 0) {
+        t = alignTextRight((string)(time / 60), 2, "0") + ":"+alignTextRight((string)(time % 60), 2, "0");
+    }
+    else
+        t = "--:--";
+    s = s + alignTextRight(t, maxTimeLength, " ");
+
+//    s = s + alignTextRight(llList2String(time_list, index), maxNumberLength, " ");
+    return s;
+}
+
+string getInfo()
+{
+    integer c = llGetListLength(id_list);
+    string s = "";
+    integer i = 0;
+    while (i<c) {
+        if (s!="")
+            s = s + "\n";
+        s = s + getItem(i, FALSE)+"\n";
+        i++;
+    }
+    return s;
+}
+
+showInfo(){
+    llMessageLinked(LINK_SET, 0, getInfo(), "fw_data");
+}
+
+integer indexOfName(string name)
+{
+    integer len = llGetListLength( name_list );
+    integer i;
+    for( i = 0; i < len; i++ )
+    {
+        if( llList2String(name_list, i) == name )
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+integer indexOfID(key id)
+{
+    integer len = llGetListLength(id_list);
+    integer i;
+    for( i = 0; i < len; i++)
+    {
+        if( llList2Key(id_list, i) == id)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+addKeyName(key id, string name){
+    id_list += id;
+    name_list += name;
+    time_list += [0];
+}
+
+integer add(key id)
+{
+    integer index = indexOfID(id);
+    if (index < 0) {
+        string name = llGetDisplayName(id);
+        if (name=="")
+            name = llRequestDisplayName(id);
+        addKeyName(id, name);
+        return indexOfID(id);
+    }
+    else
+        return index;
+}
+
+clear()
+{
+    id_list = [];
+    name_list = [];
+    time_list = [];
+}
+
+signup(key id)
+{
+    add(id);
+    showInfo();
 }
 
 default
@@ -319,6 +433,12 @@ default
     touch_start(integer num_detected)
     {
         key id = llDetectedKey(0);
+        if ((id == llGetOwner()) || (isPerformer(id)))
+        {
+            menuTab = TAB_HOME;
+            showDialog(id);
+        }
+    /*
         if (!permitted) {
             if (id == llGetOwner())
                 llRequestPermissions(llGetOwner(), PERMISSION_DEBIT);
@@ -327,7 +447,7 @@ default
         }
         else
         {
-            if ((id == llGetOwner()) || (isperformer(id)))
+            if ((id == llGetOwner()) || (isPerformer(id)))
             {
                 menuTab = TAB_HOME;
                 showDialog(id);
@@ -335,6 +455,7 @@ default
             else
                 llRegionSayTo(id, 0, llGetDisplayName(id)+" right click, then click Pay button for donation");
         }
+        */
     }
 
     run_time_permissions(integer perm)
@@ -409,7 +530,7 @@ default
                     }
                     else if (message == "as performer")
                     {
-                        //login(id, FALSE);
+                        //start(id, FALSE);
                          menuTab = TAB_TIME;
                         showDialog(id);
                     }
@@ -430,7 +551,7 @@ default
                     if (index>=0)
                     {
                         integer time = llList2Integer(timesValues, index);
-                        login(id, time);
+                        start(id, time);
                     }
                     menuTab = TAB_HOME;
                 }
@@ -444,7 +565,7 @@ default
             if (data == EOF) //Reached end of notecard (End Of File).
             {
                 notecardQueryId = NULL_KEY;
-                llOwnerSay("Read performers count: " + (string)llGetListLength(performers));
+                llOwnerSay("Read id_list count: " + (string)llGetListLength(id_list));
                 llMessageLinked(LINK_SET, 0, "HomeURI;"+HomeURI, NULL_KEY);
             }
             else
@@ -476,9 +597,9 @@ default
                     {
                         moneyList = llParseString2List(data, [","], [" "]);
                     }
-                    else if (name=="performer")
+                    else if (name=="add")
                     {
-                        performers += data;
+                        id_list += data;
                     }
                 }
 
@@ -492,7 +613,16 @@ default
     {
         if (message == "button.signup")
         {
+            signup(id);
             llMessageLinked(LINK_SET, 0, "profile_image", id);
+        }
+        else if (message == "button.start")
+        {
+            start(id, 0);
+        }
+        else if (message == "button.stop")
+        {
+            logout(id);
         }
     }
 
