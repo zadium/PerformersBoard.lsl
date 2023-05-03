@@ -4,8 +4,8 @@
 
     @author: Zai Dium
     @version: 0.1
-    @updated: "2023-05-03 16:12:25"
-    @revision: 21
+    @updated: "2023-05-03 16:43:09"
+    @revision: 29
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -21,7 +21,6 @@ integer roundTime = 1; //* in minutes, this fix the time to start at right time 
 integer extendTime = 15;//* in minutes
 
 integer particles = FALSE;
-integer face = 1; //* face to change image of player
 
 list moneyList = [2, 4, 6, 8];
 
@@ -80,11 +79,10 @@ printText(string s)
     Script
 */
 
-list players = [];
+list performers = [];
 
 integer endTime = 0;
-key playerID = NULL_KEY; //* DJ or Host
-integer asHost = FALSE;
+key performerID = NULL_KEY;
 integer lastWarnTime = 0;
 
 integer total_amount = 0;
@@ -168,11 +166,11 @@ list getMenuList(key id) {
     list l;
     if (menuTab == TAB_HOME)
     {
-        if (id == playerID)
+        if (id == performerID)
             l += ["Logout", "Extend 15m"];
-        else if (playerID == NULL_KEY) {
-            if (isPlayer(id))
-                l += ["as DJ", "as Host"];
+        else if (performerID == NULL_KEY) {
+            if (isperformer(id))
+                l += ["as Performer", "as Guest"];
             else
                 l += ["-", "-"];
         }
@@ -181,7 +179,7 @@ list getMenuList(key id) {
 
         if (id == llGetOwner())
         {
-            if (playerID != NULL_KEY)
+            if (performerID != NULL_KEY)
                 l += ["Finish"];
             else
                 l += ["-"];
@@ -224,8 +222,8 @@ showDialog(key id)
         title = "Select command";
     else
         title = "Select time";
-    if (playerID != NULL_KEY)
-        title += "\n" + llGetDisplayName(playerID);
+    if (performerID != NULL_KEY)
+        title += "\n" + llGetDisplayName(performerID);
     if (endTime>0)
     title += "\nEnd time at "+ timeToStr(endTime);
     llDialog(id, "Page: " + (string)(cur_page+1) + " " + title, getMenu(id), dialog_channel);
@@ -238,9 +236,9 @@ string timeToStr(integer time)
     return llList2String(t, 3)+":"+llList2String(t, 4);
 }
 
-integer isPlayer(key id)
+integer isperformer(key id)
 {
-    if (llListFindList(players, [llGetDisplayName(id)])>=0)
+    if (llListFindList(performers, [llGetDisplayName(id)])>=0)
         return TRUE;
     else
         return FALSE;
@@ -248,9 +246,9 @@ integer isPlayer(key id)
 
 login(key id, integer time)
 {
-    if (playerID != NULL_KEY)
+    if (performerID != NULL_KEY)
     {
-        llRegionSayTo(id, 0, "You can not login while other DJ/Host have playing");
+        llRegionSayTo(id, 0, "You can not login while other performer have playing");
     }
     else
     {
@@ -259,34 +257,28 @@ login(key id, integer time)
         //llOwnerSay("time:"+(string)time);
         endTime = startTime + (time * 60); //* 60 seconds
 
-        playerID = id;
+        performerID = id;
         llSetPayPrice(PAY_HIDE, moneyList);
-        llRegionSayTo(playerID, 0, "Your time from " + timeToStr(startTime) + " to " +timeToStr(endTime));
+        llRegionSayTo(performerID, 0, "Your time from " + timeToStr(startTime) + " to " +timeToStr(endTime));
 
-        string texture;
-        texture = llGetDisplayName(playerID);
-        if (llGetInventoryKey(texture) == NULL_KEY)
-            texture = "Default";
-        llSetTexture(texture, face);
         llSetTimerEvent(interval);
         updateText();
     }
 }
 
 logout(key id) {
-    if (id == playerID)
-        llRegionSayTo(playerID, 0, llGetDisplayName(playerID) + " your time is finished");
+    if (id == performerID)
+        llRegionSayTo(performerID, 0, llGetDisplayName(performerID) + " your time is finished");
     endTime = 0;
     lastWarnTime = 0;
-    playerID = NULL_KEY;
+    performerID = NULL_KEY;
     llSetPayPrice(PAY_HIDE, [PAY_HIDE, PAY_HIDE, PAY_HIDE, PAY_HIDE]);
-    llSetTexture("Default", face);
     updateText();
 }
 
 sendWarnning()
 {
-    llRegionSayTo(playerID, 0, llGetDisplayName(playerID) + " your time about to end at " + timeToStr(endTime));
+    llRegionSayTo(performerID, 0, llGetDisplayName(performerID) + " your time about to end at " + timeToStr(endTime));
 }
 
 key last_paid_id = NULL_KEY;
@@ -296,11 +288,8 @@ updateText()
     string s = "Total Tip " + (string)total_amount;
     if (last_paid_id != NULL_KEY)
          s += "\nLast tip from " + llGetDisplayName(last_paid_id);
-    if (playerID != NULL_KEY)
-        if (asHost)
-            s += "\nCurrent Host " + llGetDisplayName(playerID);
-        else
-            s += "\nCurrent DJ " + llGetDisplayName(playerID);
+    if (performerID != NULL_KEY)
+        s += "\nCurrent performer " + llGetDisplayName(performerID);
     llSetText(s, <1.0, 1.0, 1.0>, 1.0);
 }
 
@@ -308,7 +297,7 @@ readNotecard()
 {
     if (llGetInventoryKey(notecardName) != NULL_KEY)
     {
-        players = [];
+        performers = [];
         llOwnerSay("Reading notecard");
         notecardLine = 0;
         notecardQueryId = llGetNotecardLine(notecardName, notecardLine);
@@ -338,7 +327,7 @@ default
         }
         else
         {
-            if ((id == llGetOwner()) || (isPlayer(id)))
+            if ((id == llGetOwner()) || (isperformer(id)))
             {
                 menuTab = TAB_HOME;
                 showDialog(id);
@@ -358,16 +347,16 @@ default
     money(key id, integer amount)
     {
         total_amount += amount;
-        string msg = llGetDisplayName(id) + " donated " + (string)amount  + " to " + llGetDisplayName(playerID);
+        string msg = llGetDisplayName(id) + " donated " + (string)amount  + " to " + llGetDisplayName(performerID);
         llInstantMessage(llGetOwner(), msg);
-        if (playerID != NULL_KEY) {
-            llGiveMoney(playerID, amount);
-            llRegionSayTo(id, 0, "Thank you for payment, you donated " + (string)amount + " to " + llGetDisplayName(playerID));
+        if (performerID != NULL_KEY) {
+            llGiveMoney(performerID, amount);
+            llRegionSayTo(id, 0, "Thank you for payment, you donated " + (string)amount + " to " + llGetDisplayName(performerID));
             llSay(0, msg);
             last_paid_id = id;
             updateText();
             if (particles)
-                sendParticles(playerID);
+                sendParticles(performerID);
         }
     }
 
@@ -406,30 +395,22 @@ default
                     }
                     else if (message == "extend 15m")
                     {
-                        if (playerID != NULL_KEY) {
+                        if (performerID != NULL_KEY) {
                             if (endTime>0) {
                                 endTime = endTime + extendTime * 60;
-                                llRegionSayTo(playerID, 0, "Time extended to " + timeToStr(endTime));
+                                llRegionSayTo(performerID, 0, "Time extended to " + timeToStr(endTime));
                             }
                         }
                     }
                     else if (message == "finish")
                     {
-                        if (playerID != NULL_KEY)
-                            logout(playerID);
+                        if (performerID != NULL_KEY)
+                            logout(performerID);
                     }
-                    else if (message == "as dj")
+                    else if (message == "as performer")
                     {
                         //login(id, FALSE);
-                        asHost = FALSE;
                          menuTab = TAB_TIME;
-                        showDialog(id);
-                    }
-                    else if (message == "as host")
-                    {
-                        //login(id, TRUE);
-                        asHost = TRUE;
-                        menuTab = TAB_TIME;
                         showDialog(id);
                     }
                     else if (message == "logout")
@@ -463,7 +444,7 @@ default
             if (data == EOF) //Reached end of notecard (End Of File).
             {
                 notecardQueryId = NULL_KEY;
-                llOwnerSay("Read players count: " + (string)llGetListLength(players));
+                llOwnerSay("Read performers count: " + (string)llGetListLength(performers));
                 llMessageLinked(LINK_SET, 0, "HomeURI;"+HomeURI, NULL_KEY);
             }
             else
@@ -485,8 +466,6 @@ default
                         roundTime = (integer)data;
                     else if (name=="extendtime")
                         extendTime = (integer)data;
-                    else if (name=="face")
-                        face = (integer)data;
                     if (name=="homeuri")
                     {
                         HomeURI = data;
@@ -497,9 +476,9 @@ default
                     {
                         moneyList = llParseString2List(data, [","], [" "]);
                     }
-                    else if (name=="player")
+                    else if (name=="performer")
                     {
-                        players += data;
+                        performers += data;
                     }
                 }
 
@@ -526,11 +505,11 @@ default
                 clearParticles();
          }
 
-        if (playerID != NULL_KEY)
+        if (performerID != NULL_KEY)
         {
             integer t = llGetUnixTime();
              if ((endTime - t) <= 0) {
-                logout(playerID);
+                logout(performerID);
             }
              else if (warnBefore > 0)
             {
