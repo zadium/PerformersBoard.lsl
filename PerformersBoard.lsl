@@ -3,9 +3,9 @@
     @description:
 
     @author: Zai Dium
-    @version: 0.11
-    @updated: "2023-05-03 18:52:26"
-    @revision: 69
+    @version: 0.17
+    @updated: "2023-05-04 12:10:54"
+    @revision: 179
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -15,6 +15,8 @@
 */
 
 //* settings
+
+string fontName = "Impact-512";
 
 integer warnBefore = 1; //* in minutes
 integer warnTimes = 4; //* in minutes
@@ -31,6 +33,7 @@ integer interval = 1;
 
 string HomeURI;
 
+integer infoLines = 4;
 integer maxLineLength = 32;
 integer maxNameLength = 20;
 integer maxNumberLength = 4;
@@ -76,9 +79,9 @@ debug(string s)
     llSay(0, s);
 }
 
-printText(string s)
+printText(string s, string box)
 {
-    llMessageLinked(LINK_THIS, 0, s, "fw_reset");
+    llMessageLinked(LINK_ROOT, 0, s, "fw_data:"+box);
 }
 
 /**
@@ -100,8 +103,8 @@ key notecardQueryId;
 integer notecardLine;
 string notecardName = "Config";
 
-list timesStrings = ["3m", "30", "60m", "1h30m", "2h", "2h30m", "3h", "4h", "5h", "6h", "12h"];
-list timesValues = [3, 30, 60, 90, 120, 150, 180, 240, 300, 360, 720];
+list timesStrings = ["Open", "3m", "30", "60m", "1h30m", "2h", "2h30m", "3h", "4h", "5h", "6h", "12h"];
+list timesValues = [0, 3, 30, 60, 90, 120, 150, 180, 240, 300, 360, 720];
 
 //* https://wiki.secondlife.com/wiki/Unix2StampLst
 list Unix2StampList(integer vIntDat){
@@ -167,6 +170,7 @@ sendParticles(key target)
 
 integer TAB_HOME = 0;
 integer TAB_TIME = 1;
+integer TAB_ITEM = 3;
 
 integer menuTab = 0;
 
@@ -175,10 +179,10 @@ list getMenuList(key id) {
     if (menuTab == TAB_HOME)
     {
         if (id == performerID)
-            l += ["Logout", "Extend 15m"];
+            l += ["finish", "Extend 15m"];
         else if (performerID == NULL_KEY) {
             if (isPerformer(id))
-                l += ["as Performer", "as Guest"];
+                l += ["Start", "Remove"];
             else
                 l += ["-", "-"];
         }
@@ -194,9 +198,13 @@ list getMenuList(key id) {
             l += ["Reconfig"];
         }
     }
-    else
+    else if (menuTab == TAB_TIME)
     {
         l += timesStrings;
+    }
+    else if (menuTab == TAB_ITEM)
+    {
+        l += ["Remove", "Move Top"];
     }
     return l;
 }
@@ -260,33 +268,39 @@ start(key id, integer time)
     }
     else
     {
+        performerID = id;
         if (time>0)
         {
             //* 60 seconds and 15 min, we round it to 15 min
             integer startTime = llRound((float)((float)llGetUnixTime() /((float)roundTime * 60)))*roundTime*60;
             //llOwnerSay("time:"+(string)time);
             endTime = startTime + (time * 60); //* 60 seconds
-            performerID = id;
             llRegionSayTo(performerID, 0, "Your time from " + timeToStr(startTime) + " to " +timeToStr(endTime));
         }
         else
         {
-             endTime = 0;
+            endTime = 0;
         }
         llSetPayPrice(PAY_HIDE, moneyList);
-        llSetTimerEvent(interval);
         updateText();
+        showInfo();
+        llSetTimerEvent(interval);
     }
 }
 
-logout(key id) {
-    if (id == performerID)
-        llRegionSayTo(performerID, 0, llGetDisplayName(performerID) + " your time is finished");
+reset_performer() {
     endTime = 0;
     lastWarnTime = 0;
     performerID = NULL_KEY;
     llSetPayPrice(PAY_HIDE, [PAY_HIDE, PAY_HIDE, PAY_HIDE, PAY_HIDE]);
+}
+
+finish(key id) {
+    if (id == performerID)
+        llRegionSayTo(performerID, 0, llGetDisplayName(performerID) + " your time is finished");
+    reset_performer();
     updateText();
+    showInfo();
 }
 
 sendWarnning()
@@ -298,6 +312,7 @@ key last_paid_id = NULL_KEY;
 
 updateText()
 {
+    return; //*
     string s = "Total Tip " + (string)total_amount;
     if (last_paid_id != NULL_KEY)
          s += "\nLast tip from " + llGetDisplayName(last_paid_id);
@@ -354,7 +369,12 @@ string getInfo()
 }
 
 showInfo(){
-    llMessageLinked(LINK_SET, 0, getInfo(), "fw_data");
+    string s = "Current: " + llGetDisplayName(performerID)+"\n";
+    s += "Total Tip " + (string)total_amount;
+    if (last_paid_id != NULL_KEY)
+         s += "\nLast: " + llGetDisplayName(last_paid_id);
+    printText(s, "Tip");
+    printText(getInfo(), "Text");
 }
 
 integer indexOfName(string name)
@@ -405,11 +425,48 @@ integer add(key id)
         return index;
 }
 
+remove(key id){
+    integer index = indexOfID(id);
+    if (index >= 0) {
+        id_list = llDeleteSubList(id_list, index, index);
+        time_list = llDeleteSubList(time_list, index, index);
+    }
+}
+
+moveTop(key id){
+    integer index = indexOfID(id);
+    if (index >= 0) {
+        key time = llList2Key(time_list, index);
+        id_list = [id] + llDeleteSubList(id_list, index, index);
+        time_list = [time] + llDeleteSubList(time_list, index, index);
+    }
+}
+
+integer detectBoardIndex(string s)
+{
+    list params = llParseString2List(s,[":"],[""]);
+    string r = llList2String(params, 3);
+    if (r == "")
+        return -1;
+    else
+        return (integer)r;
+}
+
+key detectBoardID(string s)
+{
+    integer i = detectBoardIndex(s);
+    if (i<0)
+        return NULL_KEY;
+    else
+        return llList2Key(id_list, i);
+}
+
 clear()
 {
     id_list = [];
     name_list = [];
     time_list = [];
+    reset_performer();
 }
 
 signup(key id)
@@ -418,26 +475,65 @@ signup(key id)
     showInfo();
 }
 
+
+signout(key id)
+{
+    if (indexOfID(id)>=0)
+    {
+        remove(id);
+        showInfo();
+    }
+}
+
+fwAddBox(string name, string parent, integer x, integer y, integer w, integer h, string text, string style) {
+    llMessageLinked(LINK_SET, 0, text, "fw_addbox: " +name + ":" + parent + ":"+
+                    (string)x + "," + (string)y + "," + (string)w + "," + (string)h + ":" + style);
+}
+
+fwTouchQuery(integer linkNumber, integer faceNumber, string userData) {
+    llMessageLinked(LINK_SET, 0, userData, "fw_touchquery:" + (string)linkNumber + ":" + (string)faceNumber);
+}
+
+key action_id = NULL_KEY;
+
 default
 {
     state_entry()
     {
-        printText("Init");
+        llSetText("", <0.0, 0.0, 0.0>, 0.0);
         clearParticles();
+        llMessageLinked(LINK_SET, 0, "", "fw_reset");
         llSetPayPrice(PAY_HIDE, [PAY_HIDE, PAY_HIDE, PAY_HIDE, PAY_HIDE]);
         readNotecard();
-        logout(NULL_KEY);
+        reset_performer();
         //llRequestPermissions(llGetOwner(), PERMISSION_DEBIT);
     }
 
     touch_start(integer num_detected)
     {
+        integer link = llDetectedLinkNumber(0);
+        string name = llGetLinkName(link);
         key id = llDetectedKey(0);
+        if (id == llGetOwner())
+        {
+            if (llSubStringIndex(name, "FURWARE ") == 0)
+            {
+                key k = detectBoardID(name);
+                if (k != NULL_KEY)
+                {
+                    action_id = k;
+                    menuTab = TAB_ITEM;
+                    showDialog(id);
+                }
+                //fwTouchQuery(link, llDetectedTouchFace(0), "board");
+            }
+        }
+/*        key id = llDetectedKey(0);
         if ((id == llGetOwner()) || (isPerformer(id)))
         {
             menuTab = TAB_HOME;
             showDialog(id);
-        }
+        }*/
     /*
         if (!permitted) {
             if (id == llGetOwner())
@@ -476,6 +572,7 @@ default
             llSay(0, msg);
             last_paid_id = id;
             updateText();
+            showInfo();
             if (particles)
                 sendParticles(performerID);
         }
@@ -526,17 +623,23 @@ default
                     else if (message == "finish")
                     {
                         if (performerID != NULL_KEY)
-                            logout(performerID);
+                            finish(performerID);
                     }
-                    else if (message == "as performer")
+                    else if (message == "start")
                     {
                         //start(id, FALSE);
-                         menuTab = TAB_TIME;
+                        menuTab = TAB_TIME;
                         showDialog(id);
                     }
-                    else if (message == "logout")
+                    else if (message == "remove")
                     {
-                        logout(id);
+                        //start(id, FALSE);
+                        menuTab = TAB_TIME;
+                        showDialog(id);
+                    }
+                    else if (message == "finish")
+                    {
+                        finish(id);
                         //showDialog(id);
                     }
                     else if (message == "reconfig")
@@ -554,6 +657,21 @@ default
                         start(id, time);
                     }
                     menuTab = TAB_HOME;
+                }
+                else if (menuTab == TAB_ITEM)
+                {
+                    if (message == "remove")
+                    {
+                        remove(action_id);
+                        showInfo();
+                        action_id = NULL_KEY;
+                    }
+                    else if (message == "move top")
+                    {
+                        moveTop(action_id);
+                        showInfo();
+                        action_id = NULL_KEY;
+                    }
                 }
             }
         }
@@ -609,20 +727,50 @@ default
         }
     }
 
-    link_message( integer sender_num, integer num, string message, key id)
+    link_message( integer sender, integer num, string message, key id)
     {
-        if (message == "button.signup")
-        {
-            signup(id);
-            llMessageLinked(LINK_SET, 0, "profile_image", id);
+        if (id == "fw_ready") {
+            // Here you can try out your commands.
+
+            //llOwnerSay("FW text is up and running!");
+
+            // Start sending some initialization stuff.
+            llMessageLinked(sender, 0, "c=white; a=left; f="+fontName, "fw_conf");
+
+            fwAddBox("Tip", "default", 0, 0, maxLineLength, infoLines, "", "");
+            fwAddBox("Text", "default", 0, infoLines, maxLineLength, 12, "", "");
+            llMessageLinked(sender, 0, "c=red;w=none;t=off", "fw_conf:Tip");
+            llMessageLinked(sender, 0, "c=white;w=none;t=off", "fw_conf:Text");
+            updateText();
+            showInfo();
         }
-        else if (message == "button.start")
+        else
         {
-            start(id, 0);
-        }
-        else if (message == "button.stop")
-        {
-            logout(id);
+            list params = llParseString2List(message,[";"],[""]);
+            string cmd = llToLower(llList2String(params,0));
+            params = llDeleteSubList(params, 0, 0);
+
+            if (cmd == "button.signup")
+            {
+                signup(id);
+                llMessageLinked(LINK_SET, 0, "profile_image", id);
+            }
+            else if (cmd == "button.start")
+            {
+                if (indexOfID(id)>=0)
+                {
+                    menuTab = TAB_TIME;
+                    showDialog(id);
+                }
+    //            start(id, 0);
+            }
+            else if (cmd == "button.finish")
+            {
+                if (performerID == id)
+                    finish(id);
+            }
+    /*        else
+                llOwnerSay(cmd);*/
         }
     }
 
@@ -637,18 +785,21 @@ default
 
         if (performerID != NULL_KEY)
         {
-            integer t = llGetUnixTime();
-             if ((endTime - t) <= 0) {
-                logout(performerID);
-            }
-             else if (warnBefore > 0)
+            if (endTime>0) //* not open time
             {
-                if ((endTime - t) < (warnBefore * 60))
+                integer t = llGetUnixTime();
+                 if ((endTime - t) <= 0) {
+                    finish(performerID);
+                }
+                 else if (warnBefore > 0)
                 {
-                    if ((t - lastWarnTime) > ((warnBefore * 60) / warnTimes))
+                    if ((endTime - t) < (warnBefore * 60))
                     {
-                        lastWarnTime = t;
-                        sendWarnning();
+                        if ((t - lastWarnTime) > ((warnBefore * 60) / warnTimes))
+                        {
+                            lastWarnTime = t;
+                            sendWarnning();
+                        }
                     }
                 }
             }
