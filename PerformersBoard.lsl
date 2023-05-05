@@ -4,8 +4,8 @@
 
     @author: Zai Dium
     @version: 0.17
-    @updated: "2023-05-05 17:08:36"
-    @revision: 308
+    @updated: "2023-05-05 17:29:12"
+    @revision: 310
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -16,6 +16,12 @@
         Button recieved as "button.signup"
 
 */
+
+/** DISCLAIMER **********************************************************************
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, TITLE AND NON-INFRINGEMENT.
+/************************************************************************************/
 
 //* settings
 

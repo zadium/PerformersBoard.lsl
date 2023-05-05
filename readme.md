@@ -1,4 +1,8 @@
-### Performers Queue
+### Performers Board
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, TITLE AND NON-INFRINGEMENT.
 
 #### Setup
 
@@ -33,5 +37,3 @@ Text https://wiki.secondlife.com/wiki/FURWARE_text/Tutorial#Creating_displays
     Finish
 
 * Add ProfileImage copy ProfileImage.lsl into it (set click to pay)
-
-
