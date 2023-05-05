@@ -4,8 +4,8 @@
 
     @author: Zai Dium
     @version: 0.17
-    @updated: "2023-05-05 16:04:10"
-    @revision: 283
+    @updated: "2023-05-05 16:14:51"
+    @revision: 284
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -264,7 +264,7 @@ integer dialog_listen_id;
 showDialog(key id)
 {
 //* nop we cant check it, what if ingored :(
-/*	if (dialog_listen_id>0)
+/*    if (dialog_listen_id>0)
     {
         llRegionSayTo(id, 0, "Board is busy with another user, please wait and try again");
         return;
@@ -588,7 +588,7 @@ doCommand(string cmd, key id, list params)
     }
     else if (cmd == "tip")
     {
-//		llpaye
+//        llpaye
     }
 /*        else
         llOwnerSay(cmd);*/
@@ -604,8 +604,12 @@ default
         llSetPayPrice(PAY_HIDE, [PAY_HIDE, PAY_HIDE, PAY_HIDE, PAY_HIDE]);
         readNotecard();
         reset_performer();
-
         //llRequestPermissions(llGetOwner(), PERMISSION_DEBIT);
+    }
+
+    on_rez(integer number)
+    {
+        llResetScript();
     }
 
     touch_start(integer num_detected)
