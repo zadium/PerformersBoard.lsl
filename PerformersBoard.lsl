@@ -1,11 +1,11 @@
-/**
+/**   
     @name: PerformersBoard
-    @description:
-
+    @description:  
+ 
     @author: Zai Dium
     @version: 0.17
-    @updated: "2023-05-05 20:47:39"
-    @revision: 335
+    @updated: "2023-05-06 00:08:22"
+    @revision: 398
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -19,7 +19,7 @@
 
 //* settings
 
-string FontName = "Impact-512";
+string FontName = "Impact512";
 
 integer ShowTips = FALSE; //* Show tips amount in console board
 integer AskTimes = FALSE; //* Show times available when start
@@ -33,7 +33,7 @@ integer OnlineTimeout = 1; //* in minutes
 
 integer Particles = FALSE;
 
-list MoneyList = [2, 4, 6, 8];
+list MoneyList = [50, 100, 150, 200];
 
 integer interval = 1;
 
@@ -350,9 +350,9 @@ start(key id, integer time)
                 llSetPayPrice(PAY_HIDE, MoneyList);
             else
                 llSetPayPrice(PAY_HIDE, [PAY_HIDE, PAY_HIDE, PAY_HIDE, PAY_HIDE]);
+            remove(id);
             updateText();
             showInfo();
-            moveTop(id);
             llMessageLinked(LINK_SET, 0, "profile_image", performerID);
         }
         else
@@ -372,8 +372,10 @@ reset_performer() {
 
 finish(key id) {
     if (id == performerID)
+    {
         llInstantMessage(performerID, "Your time is ended, Thank you " +llGetDisplayName(performerID));
-    remove(id);
+        remove(id);
+    }
     reset_performer();
     updateText();
     showInfo();
@@ -903,18 +905,16 @@ default
 
     link_message( integer sender, integer num, string message, key id)
     {
-        if (id == "fw_ready") {
+        if (id == "fw_ready")
+        {
             // Here you can try out your commands.
-
             //llOwnerSay("FW text is up and running!");
-
             // Start sending some initialization stuff.
-            llMessageLinked(sender, 0, "c=white; a=left; f="+FontName, "fw_conf");
-
+            llMessageLinked(LINK_SET, 0, "c=white; a=left; f="+FontName, "fw_conf");
             fwAddBox("Tip", "default", 0, 0, maxLineLength, infoLines, "", "");
             fwAddBox("Text", "default", 0, infoLines, maxLineLength, 12, "", "");
-            llMessageLinked(sender, 0, "c=red;w=none;t=off", "fw_conf:Tip");
-            llMessageLinked(sender, 0, "c=white;w=none;t=off", "fw_conf:Text");
+            llMessageLinked(LINK_SET, 0, "c=red; a=left; w=none; t=off; f="+FontName, "fw_conf:Tip");
+            llMessageLinked(LINK_SET, 0, "c=white; a=left; w=none; t=off; f="+FontName, "fw_conf:Text");
             updateText();
             showInfo();
         }
