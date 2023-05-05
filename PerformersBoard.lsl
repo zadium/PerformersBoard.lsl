@@ -4,7 +4,7 @@
 
     @author: Zai Dium
     @version: 0.17
-    @updated: "2023-05-05 17:29:12"
+    @updated: "2023-05-05 17:42:49"
     @revision: 310
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
@@ -16,12 +16,6 @@
         Button recieved as "button.signup"
 
 */
-
-/** DISCLAIMER **********************************************************************
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE, TITLE AND NON-INFRINGEMENT.
-/************************************************************************************/
 
 //* settings
 
@@ -354,6 +348,7 @@ start(key id, integer time)
                 llSetPayPrice(PAY_HIDE, [PAY_HIDE, PAY_HIDE, PAY_HIDE, PAY_HIDE]);
             updateText();
             showInfo();
+            moveTop(id);
             llMessageLinked(LINK_SET, 0, "profile_image", performerID);
             llSetTimerEvent(interval);
         }
@@ -562,7 +557,7 @@ clear()
 signup(key id)
 {
     add(id);
-    llRegionSayTo(id, 0, llGetDisplayName(id) + " You are signed as performer.");
+    llRegionSayTo(id, 0, llGetDisplayName(id) + " You are signed as performer, click finish to remove your self.");
     showInfo();
 }
 
