@@ -4,8 +4,8 @@
 
     @author: Zai Dium
     @version: 0.17
-    @updated: "2023-05-05 16:14:51"
-    @revision: 284
+    @updated: "2023-05-05 17:08:36"
+    @revision: 308
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -146,6 +146,18 @@ list Unix2StampList(integer vIntDat){
         }
     }
     return [vIntYrs, vIntDat, vIntDys] + vLstRtn;
+}
+
+integer tipLink = -1;
+
+updateLinks()
+{
+    integer i=llGetNumberOfPrims();
+    while (i--)
+    {
+        if (llToLower(llGetLinkName(i)) == "tip") //* find tip button
+            tipLink = i;
+    }
 }
 
 integer clearParticlesAfter = 3; //* after seconds
@@ -314,25 +326,33 @@ start(key id, integer time)
     }
     else
     {
-        performerID = id;
-        if (time>0)
+        if (permitted)
         {
-            //* 60 seconds and 15 min, we round it to 15 min
-            integer startTime = llRound((float)((float)llGetUnixTime() /((float)RoundTime * 60)))*RoundTime*60;
-            //llOwnerSay("time:"+(string)time);
-            endTime = startTime + (time * 60); //* 60 seconds
-            llRegionSayTo(performerID, 0, llGetDisplayName(id) + " Your time from " + timeToStr(startTime) + " to " +timeToStr(endTime));
+            performerID = id;
+            if (time>0)
+            {
+                //* 60 seconds and 15 min, we round it to 15 min
+                integer startTime = llRound((float)((float)llGetUnixTime() /((float)RoundTime * 60)))*RoundTime*60;
+                //llOwnerSay("time:"+(string)time);
+                endTime = startTime + (time * 60); //* 60 seconds
+                llRegionSayTo(performerID, 0, llGetDisplayName(id) + " Your time from " + timeToStr(startTime) + " to " +timeToStr(endTime));
+            }
+            else
+            {
+                endTime = 0;
+                llRegionSayTo(id, 0, llGetDisplayName(id) + " started, good luck.");
+            }
+            if (permitted) //* if not there is not prices to pay
+                llSetPayPrice(PAY_HIDE, MoneyList);
+            else
+                llSetPayPrice(PAY_HIDE, [PAY_HIDE, PAY_HIDE, PAY_HIDE, PAY_HIDE]);
+            updateText();
+            showInfo();
+            llMessageLinked(LINK_SET, 0, "profile_image", performerID);
+            llSetTimerEvent(interval);
         }
         else
-        {
-            endTime = 0;
-            llRegionSayTo(id, 0, llGetDisplayName(id) + " started, good luck.");
-        }
-        llSetPayPrice(PAY_HIDE, MoneyList);
-        updateText();
-        showInfo();
-        llMessageLinked(LINK_SET, 0, "profile_image", performerID);
-        llSetTimerEvent(interval);
+            llRegionSayTo(id, 0, llGetDisplayName(id) + " Can't start, this board not setup for tips, please ask owner to permit it.");
     }
 }
 
@@ -409,7 +429,7 @@ string getInfo()
     string s = "";
     integer c = llGetListLength(id_list);
     if (c ==0)
-        s = "No performers signed.";
+        s = "No performers is signed.";
     else
     {
         integer i = 0;
@@ -561,7 +581,7 @@ doCommand(string cmd, key id, list params)
     else if (cmd == "start")
     {
         if (performerID == id)
-            llRegionSayTo(id, 0, llGetDisplayName(id) + " You alread started");
+            llRegionSayTo(id, 0, llGetDisplayName(id) + " You already started");
         else if (performerID != NULL_KEY)
             llRegionSayTo(id, 0, llGetDisplayName(id) + " You can not start while other performer " + llGetDisplayName(performerID) + " is started");
         else if (isSigned(id))
@@ -588,10 +608,7 @@ doCommand(string cmd, key id, list params)
     }
     else if (cmd == "tip")
     {
-//        llpaye
     }
-/*        else
-        llOwnerSay(cmd);*/
 }
 
 default
@@ -600,11 +617,12 @@ default
     {
         llSetText("", <0.0, 0.0, 0.0>, 0.0);
         clearParticles();
-        llMessageLinked(LINK_SET, 0, "", "fw_reset");
         llSetPayPrice(PAY_HIDE, [PAY_HIDE, PAY_HIDE, PAY_HIDE, PAY_HIDE]);
+        llMessageLinked(LINK_SET, 0, "", "fw_reset");
+        updateLinks();
         readNotecard();
         reset_performer();
-        //llRequestPermissions(llGetOwner(), PERMISSION_DEBIT);
+        llRequestPermissions(llGetOwner(), PERMISSION_DEBIT);
     }
 
     on_rez(integer number)
@@ -619,7 +637,11 @@ default
         key id = llDetectedKey(0);
         if (id == llGetOwner())
         {
-            if (llSubStringIndex(name, "FURWARE ") == 0)
+            if (llDetectedLinkNumber(0) == 1) {
+                if (!permitted)
+                   llRequestPermissions(llGetOwner(), PERMISSION_DEBIT);
+            }
+            else if (llSubStringIndex(name, "FURWARE ") == 0)
             {
                 key k = detectBoardID(name);
                 if (k != NULL_KEY)
@@ -642,12 +664,20 @@ default
 
     money(key id, integer amount)
     {
+        key toWho;
+        if (permitted) //* if not permitted
+            toWho = performerID;
+        else
+            toWho = llGetOwner();
+
         total_amount += amount;
-        string msg = llGetDisplayName(id) + " donated " + (string)amount  + " to " + llGetDisplayName(performerID);
+        string msg = llGetDisplayName(id) + " donated " + (string)amount  + " to " + llGetDisplayName(toWho);
         llInstantMessage(llGetOwner(), msg);
         if (performerID != NULL_KEY) {
-            llGiveMoney(performerID, amount);
-            llRegionSayTo(id, 0, "Thank you for payment, you donated " + (string)amount + " to " + llGetDisplayName(performerID));
+            if (permitted)
+                llGiveMoney(performerID, amount);
+            llInstantMessage(id, "Thank you for payment, you donated " + (string)amount + " to " + llGetDisplayName(toWho));
+            //llRegionSayTo(id, 0, "Thank you for payment, you donated " + (string)amount + " to " + llGetDisplayName(performerID));
             llSay(0, msg);
             last_paid_id = id;
             updateText();

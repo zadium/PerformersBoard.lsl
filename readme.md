@@ -25,4 +25,13 @@ Text https://wiki.secondlife.com/wiki/FURWARE_text/Tutorial#Creating_displays
 
 * Reset Script
 
+* Add Buttons with this names, copuy Click.lsl into it
+
+    Tip (set click to Pay)
+    Signup
+    Start
+    Finish
+
+* Add ProfileImage copy ProfileImage.lsl into it (set click to pay)
+
 
