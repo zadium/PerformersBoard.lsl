@@ -4,8 +4,8 @@
 
     @author: Zai Dium
     @version: 0.17
-    @updated: "2023-05-05 20:29:37"
-    @revision: 331
+    @updated: "2023-05-05 20:47:39"
+    @revision: 335
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -824,17 +824,23 @@ default
         {
             if (performerID != NULL_KEY)
             {
+                integer t = llGetUnixTime();
                 integer online = (integer)data;
                 if (online)
-                    performerOnline = llGetUnixTime();
-                else
                 {
-                    if ((llGetUnixTime() - performerOnline) > (OnlineTimeout*60))
-                    {
+                    list agents = llGetAgentList(AGENT_LIST_REGION, []);
+                    if (llListFindList(agents, [performerID])>=0)
+                        performerOnline = t;
+                    else
                         performerOnline = 0;
-                        finish(performerID);
-                    }
                 }
+
+                if ((t - performerOnline) > (OnlineTimeout * 60))
+                {
+                    performerOnline = 0;
+                    finish(performerID);
+                }
+
             }
             requestOnlineID = NULL_KEY;
         }
@@ -859,23 +865,25 @@ default
 
                     if (name=="showtips")
                         ShowTips = toBool(data);
-                    else if (name=="AskTimes")
+                    else if (name=="asktimes")
                         AskTimes = toBool(data);
                     else if (name=="defaulttime")
                         DefaultTime = (integer)data;
-                    if (name=="WarnBefore")
+                    else if (name=="onlinetimeout")
+                        OnlineTimeout = (integer)data;
+                    if (name=="warnbefore")
                         WarnBefore = toBool(data);
-                    else if (name=="WarnTimes")
+                    else if (name=="warntimes")
                         WarnTimes = toBool(data);
-                    else if (name=="RoundTime")
+                    else if (name=="roundtime")
                         RoundTime = toBool(data);
-                    else if (name=="ExtendTime")
+                    else if (name=="extendtime")
                         ExtendTime = toBool(data);
                     if (name=="homeuri")
                     {
                         HomeURI = data;
                     }
-                    if (name=="Particles")
+                    if (name=="particles")
                         Particles = toBool(data);
                     if (name == "money")
                     {

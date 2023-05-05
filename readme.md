@@ -4,7 +4,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE, TITLE AND NON-INFRINGEMENT.
 
-#### Setup
+#### Setup FURWARE_text
 
 Text https://wiki.secondlife.com/wiki/FURWARE_text/Tutorial#Creating_displays
 
@@ -26,11 +26,13 @@ Text https://wiki.secondlife.com/wiki/FURWARE_text/Tutorial#Creating_displays
 * Upload init.lsl into root, change the font name to Impact-512 (already set)
 * Upload Performers.lsl into root
 
-
 * Reset Script
+
+#### Setup Objects/Prims
 
 * Add Buttons with this names, copuy Click.lsl into it
 
+    ProfileImage
     Tip (set click to Pay)
     Signup
     Start
