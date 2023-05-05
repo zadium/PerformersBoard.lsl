@@ -4,8 +4,8 @@
 
     @author: Zai Dium
     @version: 0.17
-    @updated: "2023-05-05 14:36:24"
-    @revision: 199
+    @updated: "2023-05-05 15:55:11"
+    @revision: 278
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -22,7 +22,8 @@
 string FontName = "Impact-512";
 
 integer ShowTips = FALSE; //* Show tips amount in console board
-integer ShowTimes = FALSE; //* Show times available when start
+integer AskTimes = FALSE; //* Show times available when start
+integer DefaultTime = 0; //* default time for performer, in seconds, keep it 0 to make it open time
 
 integer warnBefore = 1; //* in minutes
 integer warnTimes = 4; //* in minutes
@@ -183,9 +184,11 @@ sendParticles(key target)
 }
 
 integer TAB_HOME = 0;
-integer TAB_TIME = 1;
+integer TAB_START = 1;
 integer TAB_ITEM = 3;
 integer TAB_SIGNUP = 4;
+integer TAB_FINISH = 5;
+//integer TAB_ADMIN = 6;
 
 key menuAgentID = NULL_KEY; //* when open dialog we save who call it, to compare when dialog confirmed by same who opened it
 integer menuTab = 0;
@@ -195,36 +198,45 @@ list getMenuList(key id) {
     if (menuTab == TAB_HOME)
     {
         if (id == performerID)
-            l += ["finish", "Extend 15m"];
-        else if (performerID == NULL_KEY) {
-            if (isPerformer(id))
-                l += ["Start", "Remove"];
+        {
+            l += ["Finish"];
+            if (ShowTips)
+                l += ["Extend 15m"];
+        }
+        else if (performerID == NULL_KEY)
+        {
+            if (isSigned(id))
+                l += ["Start", "Finish"];
             else
                 l += ["-", "-"];
         }
-        else
-            l += ["Busy", "Busy"];
 
         if (id == llGetOwner())
         {
             if (performerID != NULL_KEY)
-                l += ["Finish"];
+                l += ["End"];
             else
                 l += ["-"];
             l += ["Reconfig"];
         }
     }
-    else if (menuTab == TAB_TIME)
+    else if (menuTab == TAB_START)
     {
-        l += ["Cancel", "Confirm"] + timesStrings;
+        l += ["Start", "Cancel"];
+        if (AskTimes)
+            l += timesStrings;
+    }
+    else if (menuTab == TAB_FINISH)
+    {
+        l += ["Finish", "Cancel"];
     }
     else if (menuTab == TAB_ITEM)
     {
-        l += ["Remove", "Move Top"];
+        l += ["Move Top", "Remove", "Cancel"];
     }
     else if (menuTab = TAB_SIGNUP)
     {
-        l += ["Cancel", "Signup"];
+        l += ["Signup", "Cancel"];
     }
     return l;
 }
@@ -241,7 +253,7 @@ list getMenu(key id)
         return cmd_menu + llList2List(commands, x , x + 8);
     }
     else {
-        return cmd_menu + commands;
+        return commands;
     }
 }
 
@@ -251,9 +263,16 @@ integer dialog_listen_id;
 
 showDialog(key id)
 {
+//* nop we cant check it, what if ingored :(
+/*	if (dialog_listen_id>0)
+    {
+        llRegionSayTo(id, 0, "Board is busy with another user, please wait and try again");
+        return;
+    }
+*/
+    llListenRemove(dialog_listen_id);
     menuAgentID = id;
     dialog_channel = -1 - (integer)("0x" + llGetSubString( (string) llGetKey(), -7, -1) );
-    llListenRemove(dialog_listen_id);
     string title;
     if (menuTab == TAB_HOME)
         title = "Select command";
@@ -269,7 +288,8 @@ showDialog(key id)
 
 closeDialog(key id)
 {
-    menuAgentID = NULL_KEY;
+    if (dialog_listen_id>0) //*maybe showDialog called again for same user
+        menuAgentID = NULL_KEY;
 }
 
 string timeToStr(integer time)
@@ -278,9 +298,9 @@ string timeToStr(integer time)
     return llList2String(t, 3)+":"+llList2String(t, 4);
 }
 
-integer isPerformer(key id)
+integer isSigned(key id)
 {
-    if (llListFindList(id_list, [llGetDisplayName(id)])>=0)
+    if (llListFindList(id_list, [id])>=0)
         return TRUE;
     else
         return FALSE;
@@ -301,11 +321,12 @@ start(key id, integer time)
             integer startTime = llRound((float)((float)llGetUnixTime() /((float)roundTime * 60)))*roundTime*60;
             //llOwnerSay("time:"+(string)time);
             endTime = startTime + (time * 60); //* 60 seconds
-            llRegionSayTo(performerID, 0, "Your time from " + timeToStr(startTime) + " to " +timeToStr(endTime));
+            llRegionSayTo(performerID, 0, llGetDisplayName(id) + " Your time from " + timeToStr(startTime) + " to " +timeToStr(endTime));
         }
         else
         {
             endTime = 0;
+            llRegionSayTo(id, 0, llGetDisplayName(id) + " started, good luck.");
         }
         llSetPayPrice(PAY_HIDE, moneyList);
         updateText();
@@ -319,12 +340,14 @@ reset_performer() {
     endTime = 0;
     lastWarnTime = 0;
     performerID = NULL_KEY;
+    llMessageLinked(LINK_SET, 0, "profile_image", NULL_KEY);
     llSetPayPrice(PAY_HIDE, [PAY_HIDE, PAY_HIDE, PAY_HIDE, PAY_HIDE]);
 }
 
 finish(key id) {
     if (id == performerID)
-        llRegionSayTo(performerID, 0, llGetDisplayName(performerID) + " your time is finished");
+        llRegionSayTo(performerID, 0, "Thank you " +llGetDisplayName(performerID) + "");
+    remove(id);
     reset_performer();
     updateText();
     showInfo();
@@ -383,14 +406,19 @@ string getItem(integer index, integer full)
 
 string getInfo()
 {
-    integer c = llGetListLength(id_list);
     string s = "";
-    integer i = 0;
-    while (i<c) {
-        if (s!="")
-            s = s + "\n";
-        s = s + getItem(i, FALSE)+"\n";
-        i++;
+    integer c = llGetListLength(id_list);
+    if (c ==0)
+        s = "No performers signed.";
+    else
+    {
+        integer i = 0;
+        while (i<c) {
+            if (s!="")
+                s = s + "\n";
+            s = s + getItem(i, FALSE)+"\n";
+            i++;
+        }
     }
     return s;
 }
@@ -402,8 +430,8 @@ showInfo(){
         s += "Total Tip " + (string)total_amount;
         if (last_paid_id != NULL_KEY)
              s += "\nLast: " + llGetDisplayName(last_paid_id);
-        printText(s, "Tip");
     }
+    printText(s, "Tip");
     printText(getInfo(), "Text");
 }
 
@@ -444,7 +472,8 @@ addKeyName(key id, string name){
 integer add(key id)
 {
     integer index = indexOfID(id);
-    if (index < 0) {
+    if (index < 0)
+    {
         string name = llGetDisplayName(id);
         if (name=="")
             name = llRequestDisplayName(id);
@@ -507,16 +536,8 @@ clear()
 signup(key id)
 {
     add(id);
+    llRegionSayTo(id, 0, llGetDisplayName(id) + " You are signed as performer.");
     showInfo();
-}
-
-signout(key id)
-{
-    if (indexOfID(id)>=0)
-    {
-        remove(id);
-        showInfo();
-    }
 }
 
 fwAddBox(string name, string parent, integer x, integer y, integer w, integer h, string text, string style) {
@@ -529,6 +550,45 @@ fwTouchQuery(integer linkNumber, integer faceNumber, string userData) {
 }
 
 key action_id = NULL_KEY;
+
+doCommand(string cmd, key id, list params)
+{
+    if (cmd == "signup")
+    {
+        menuTab = TAB_SIGNUP;
+        showDialog(id);
+    }
+    else if (cmd == "start")
+    {
+        if (performerID == id)
+            llRegionSayTo(id, 0, llGetDisplayName(id) + " You alread started");
+        else if (performerID != NULL_KEY)
+            llRegionSayTo(id, 0, llGetDisplayName(id) + " You can not start while other performer " + llGetDisplayName(performerID) + " is started");
+        else if (isSigned(id))
+        {
+            menuTab = TAB_START;
+            showDialog(id);
+        }
+        else
+            llRegionSayTo(id, 0, llGetDisplayName(id) + " You are not signed.");
+    }
+    else if (cmd == "finish")
+    {
+        if (performerID == id)
+        {
+            menuTab = TAB_FINISH;
+            showDialog(id);
+        }
+        else
+            if (isSigned(id))
+            {
+                remove(id);
+                llRegionSayTo(id, 0, llGetDisplayName(id) + " Your name is removed.");
+            }
+    }
+/*        else
+        llOwnerSay(cmd);*/
+}
 
 default
 {
@@ -618,6 +678,7 @@ default
         {
             message = llToLower(message);
             llListenRemove(dialog_listen_id);
+            dialog_listen_id = 0; //* we check it in closedialog, to not close it if it show dialog again
             if (message == "---")
             {
                 cur_page = 0;
@@ -637,61 +698,52 @@ default
                 showDialog(id);
             }
             //* Commands
-            else if (menuAgentID == id) //* accept it from same who last one opened it
+            else if (menuAgentID != id) //* accept it from same who last one opened it
+                llRegionSayTo(id, 0, "Sorry action is interrupted by another user");
+            else
             {
                 if (menuTab == TAB_HOME)
                 {
-                    if (message == "busy")
+                    if (message == "extend 15m")
                     {
-                        llRegionSayTo(id, 0, "It said busy, wait till " + timeToStr(endTime));
-                    }
-                    else if (message == "extend 15m")
-                    {
-                        if (performerID != NULL_KEY) {
-                            if (endTime>0) {
-                                endTime = endTime + extendTime * 60;
-                                llRegionSayTo(performerID, 0, "Time extended to " + timeToStr(endTime));
+                        if (AskTimes)
+                        {
+                            if (performerID != NULL_KEY) {
+                                if (endTime>0) {
+                                    endTime = endTime + extendTime * 60;
+                                    llRegionSayTo(performerID, 0, "Time extended to " + timeToStr(endTime));
+                                }
                             }
                         }
                     }
-                    else if (message == "finish")
+                    else if (message == "end")
                     {
                         if (performerID != NULL_KEY)
                             finish(performerID);
                     }
                     else if (message == "start")
                     {
-                        //start(id, FALSE);
-                        menuTab = TAB_TIME;
-                        showDialog(id);
-                    }
-                    else if (message == "remove")
-                    {
-                        //start(id, FALSE);
-                        menuTab = TAB_TIME;
-                        showDialog(id);
+                        doCommand("start", id, []);
                     }
                     else if (message == "finish")
                     {
-                        finish(id);
-                        //showDialog(id);
+                        doCommand("finish", id, []);
                     }
                     else if (message == "reconfig")
                     {
                         readNotecard();
-                        //showDialog(id);
                     }
                 }
-                else if (menuTab == TAB_TIME)
+                else if (menuTab == TAB_START)
                 {
-                    if (message=="confirm")
+                    if (message=="start")
                     {
                         start(id, 0);
                     }
                     else if (message=="cancel") {
                         //* nothing to do
                     }
-                    else if (ShowTimes)
+                    else if (AskTimes)
                     {
                         integer index = llListFindList(timesStrings, [message]);
                         if (index>=0)
@@ -702,13 +754,23 @@ default
                     }
                     menuTab = TAB_HOME;
                 }
+                else if (menuTab == TAB_FINISH)
+                {
+                    if (message=="finish")
+                    {
+                        finish(id);
+                    }
+                    else if (message=="cancel") {
+                        //* nothing to do
+                    }
+                }
                 else if (menuTab == TAB_SIGNUP)
                 {
-                    if (message=="confirm")
+                    if (message=="signup")
                     {
                         signup(id);
                     }
-                    else if (message=="confirm")
+                    else if (message=="cancel")
                     {
                         //* ignore
                     }
@@ -739,7 +801,7 @@ default
             if (data == EOF) //Reached end of notecard (End Of File).
             {
                 notecardQueryId = NULL_KEY;
-                llOwnerSay("Read id_list count: " + (string)llGetListLength(id_list));
+                llOwnerSay("Read performers count: " + (string)llGetListLength(id_list));
                 llMessageLinked(LINK_SET, 0, "HomeURI;"+HomeURI, NULL_KEY);
             }
             else
@@ -755,8 +817,10 @@ default
 
                     if (name=="showtips")
                         ShowTips = toBool(data);
-                    if (name=="showtimes")
-                        ShowTimes = toBool(data);
+                    else if (name=="AskTimes")
+                        AskTimes = toBool(data);
+                    else if (name=="defaulttime")
+                        DefaultTime = (integer)data;
                     if (name=="warnbefore")
                         warnBefore = toBool(data);
                     else if (name=="warntimes")
@@ -809,28 +873,12 @@ default
             list params = llParseString2List(message,[";"],[""]);
             string cmd = llToLower(llList2String(params,0));
             params = llDeleteSubList(params, 0, 0);
-
             if (cmd == "button.signup")
-            {
-                menuTab = TAB_SIGNUP;
-                showDialog(id);
-            }
+                doCommand("signup", id, params);
             else if (cmd == "button.start")
-            {
-                if (indexOfID(id)>=0)
-                {
-                    menuTab = TAB_TIME;
-                    showDialog(id);
-                }
-    //            start(id, 0);
-            }
+                doCommand("start", id, params);
             else if (cmd == "button.finish")
-            {
-                if (performerID == id)
-                    finish(id);
-            }
-    /*        else
-                llOwnerSay(cmd);*/
+                doCommand("finish", id, params);
         }
     }
 
