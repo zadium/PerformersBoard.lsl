@@ -4,14 +4,17 @@
 
     @author: Zai Dium
     @version: 0.17
-    @updated: "2023-05-05 14:13:35"
-    @revision: 184
+    @updated: "2023-05-05 14:36:24"
+    @revision: 199
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
     @ref:
 
     @notice:
+        Use button names like "Signup", you can use capital letter in prim names, but in message recieved to compare use small letter
+        Button recieved as "button.signup"
+
 */
 
 //* settings
@@ -19,6 +22,7 @@
 string FontName = "Impact-512";
 
 integer ShowTips = FALSE; //* Show tips amount in console board
+integer ShowTimes = FALSE; //* Show times available when start
 
 integer warnBefore = 1; //* in minutes
 integer warnTimes = 4; //* in minutes
@@ -44,6 +48,14 @@ integer maxTimeLength = 5;
 /**
     Utils
 */
+integer toBool(string s)
+{
+    if ((llToLower(s) == "true") ||  (llToLower(s) == "on"))
+        return TRUE;
+    else
+        return (integer)s;
+}
+
 string alignTextLeft(string s, integer maxLength, string char) {
     integer c = llStringLength(s);
     if (c > maxLength) {
@@ -105,8 +117,8 @@ key notecardQueryId;
 integer notecardLine;
 string notecardName = "Config";
 
-list timesStrings = ["Open", "3m", "30", "60m", "1h30m", "2h", "2h30m", "3h", "4h", "5h", "6h", "12h"];
-list timesValues = [0, 3, 30, 60, 90, 120, 150, 180, 240, 300, 360, 720];
+list timesStrings = ["3m", "30", "60m", "1h30m", "2h", "2h30m", "3h", "4h", "5h", "6h", "12h"];
+list timesValues = [3, 30, 60, 90, 120, 150, 180, 240, 300, 360, 720];
 
 //* https://wiki.secondlife.com/wiki/Unix2StampLst
 list Unix2StampList(integer vIntDat){
@@ -173,7 +185,9 @@ sendParticles(key target)
 integer TAB_HOME = 0;
 integer TAB_TIME = 1;
 integer TAB_ITEM = 3;
+integer TAB_SIGNUP = 4;
 
+key menuAgentID = NULL_KEY; //* when open dialog we save who call it, to compare when dialog confirmed by same who opened it
 integer menuTab = 0;
 
 list getMenuList(key id) {
@@ -202,11 +216,15 @@ list getMenuList(key id) {
     }
     else if (menuTab == TAB_TIME)
     {
-        l += timesStrings;
+        l += ["Cancel", "Confirm"] + timesStrings;
     }
     else if (menuTab == TAB_ITEM)
     {
         l += ["Remove", "Move Top"];
+    }
+    else if (menuTab = TAB_SIGNUP)
+    {
+        l += ["Cancel", "Signup"];
     }
     return l;
 }
@@ -233,6 +251,7 @@ integer dialog_listen_id;
 
 showDialog(key id)
 {
+    menuAgentID = id;
     dialog_channel = -1 - (integer)("0x" + llGetSubString( (string) llGetKey(), -7, -1) );
     llListenRemove(dialog_listen_id);
     string title;
@@ -246,6 +265,11 @@ showDialog(key id)
     title += "\nEnd time at "+ timeToStr(endTime);
     llDialog(id, "Page: " + (string)(cur_page+1) + " " + title, getMenu(id), dialog_channel);
     dialog_listen_id = llListen(dialog_channel, "", id, "");
+}
+
+closeDialog(key id)
+{
+    menuAgentID = NULL_KEY;
 }
 
 string timeToStr(integer time)
@@ -286,6 +310,7 @@ start(key id, integer time)
         llSetPayPrice(PAY_HIDE, moneyList);
         updateText();
         showInfo();
+        llMessageLinked(LINK_SET, 0, "profile_image", performerID);
         llSetTimerEvent(interval);
     }
 }
@@ -485,7 +510,6 @@ signup(key id)
     showInfo();
 }
 
-
 signout(key id)
 {
     if (indexOfID(id)>=0)
@@ -613,7 +637,7 @@ default
                 showDialog(id);
             }
             //* Commands
-            else
+            else if (menuAgentID == id) //* accept it from same who last one opened it
             {
                 if (menuTab == TAB_HOME)
                 {
@@ -660,13 +684,34 @@ default
                 }
                 else if (menuTab == TAB_TIME)
                 {
-                    integer index = llListFindList(timesStrings, [message]);
-                    if (index>=0)
+                    if (message=="confirm")
                     {
-                        integer time = llList2Integer(timesValues, index);
-                        start(id, time);
+                        start(id, 0);
+                    }
+                    else if (message=="cancel") {
+                        //* nothing to do
+                    }
+                    else if (ShowTimes)
+                    {
+                        integer index = llListFindList(timesStrings, [message]);
+                        if (index>=0)
+                        {
+                            integer time = llList2Integer(timesValues, index);
+                            start(id, time);
+                        }
                     }
                     menuTab = TAB_HOME;
+                }
+                else if (menuTab == TAB_SIGNUP)
+                {
+                    if (message=="confirm")
+                    {
+                        signup(id);
+                    }
+                    else if (message=="confirm")
+                    {
+                        //* ignore
+                    }
                 }
                 else if (menuTab == TAB_ITEM)
                 {
@@ -683,6 +728,7 @@ default
                         action_id = NULL_KEY;
                     }
                 }
+                closeDialog(id);
             }
         }
     }
@@ -707,20 +753,24 @@ default
                         data = llStringTrim(llGetSubString(data, p + 1, -1), STRING_TRIM);
                     }
 
+                    if (name=="showtips")
+                        ShowTips = toBool(data);
+                    if (name=="showtimes")
+                        ShowTimes = toBool(data);
                     if (name=="warnbefore")
-                        warnBefore = (integer)data;
+                        warnBefore = toBool(data);
                     else if (name=="warntimes")
-                        warnTimes = (integer)data;
+                        warnTimes = toBool(data);
                     else if (name=="roundtime")
-                        roundTime = (integer)data;
+                        roundTime = toBool(data);
                     else if (name=="extendtime")
-                        extendTime = (integer)data;
+                        extendTime = toBool(data);
                     if (name=="homeuri")
                     {
                         HomeURI = data;
                     }
                     if (name=="particles")
-                        particles = (integer)data;
+                        particles = toBool(data);
                     if (name == "money")
                     {
                         moneyList = llParseString2List(data, [","], [" "]);
@@ -762,8 +812,8 @@ default
 
             if (cmd == "button.signup")
             {
-                signup(id);
-                llMessageLinked(LINK_SET, 0, "profile_image", id);
+                menuTab = TAB_SIGNUP;
+                showDialog(id);
             }
             else if (cmd == "button.start")
             {
