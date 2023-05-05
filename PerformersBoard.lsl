@@ -4,8 +4,8 @@
 
     @author: Zai Dium
     @version: 0.17
-    @updated: "2023-05-05 17:44:27"
-    @revision: 311
+    @updated: "2023-05-05 20:29:37"
+    @revision: 331
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -29,6 +29,7 @@ integer WarnBefore = 1; //* in minutes
 integer WarnTimes = 4; //* in minutes
 integer RoundTime = 1; //* in minutes, this fix the time to start at right time in minutes
 integer ExtendTime = 15;//* in minutes
+integer OnlineTimeout = 1; //* in minutes
 
 integer Particles = FALSE;
 
@@ -109,12 +110,15 @@ list time_list = [];
 
 integer endTime = 0;
 key performerID = NULL_KEY;
+integer performerOnline = 0;
 integer lastWarnTime = 0;
 
 integer total_amount = 0;
 integer permitted = FALSE;
 
-key notecardQueryId;
+key requestOnlineID = NULL_KEY;
+
+key notecardQueryId = NULL_KEY;
 integer notecardLine;
 string notecardName = "Config";
 
@@ -350,7 +354,6 @@ start(key id, integer time)
             showInfo();
             moveTop(id);
             llMessageLinked(LINK_SET, 0, "profile_image", performerID);
-            llSetTimerEvent(interval);
         }
         else
             llRegionSayTo(id, 0, llGetDisplayName(id) + " Can't start, this board not setup for tips, please ask owner to permit it.");
@@ -361,13 +364,15 @@ reset_performer() {
     endTime = 0;
     lastWarnTime = 0;
     performerID = NULL_KEY;
+    performerOnline = 0;
+    requestOnlineID = NULL_KEY;
     llMessageLinked(LINK_SET, 0, "profile_image", NULL_KEY);
     llSetPayPrice(PAY_HIDE, [PAY_HIDE, PAY_HIDE, PAY_HIDE, PAY_HIDE]);
 }
 
 finish(key id) {
     if (id == performerID)
-        llRegionSayTo(performerID, 0, "Thank you " +llGetDisplayName(performerID) + "");
+        llInstantMessage(performerID, "Your time is ended, Thank you " +llGetDisplayName(performerID));
     remove(id);
     reset_performer();
     updateText();
@@ -625,6 +630,7 @@ default
         readNotecard();
         reset_performer();
         llRequestPermissions(llGetOwner(), PERMISSION_DEBIT);
+        llSetTimerEvent(interval);
     }
 
     on_rez(integer number)
@@ -812,8 +818,27 @@ default
         }
     }
 
-    dataserver( key queryid, string data ){
-        if (queryid == notecardQueryId)
+    dataserver( key queryid, string data)
+    {
+        if (queryid == requestOnlineID)
+        {
+            if (performerID != NULL_KEY)
+            {
+                integer online = (integer)data;
+                if (online)
+                    performerOnline = llGetUnixTime();
+                else
+                {
+                    if ((llGetUnixTime() - performerOnline) > (OnlineTimeout*60))
+                    {
+                        performerOnline = 0;
+                        finish(performerID);
+                    }
+                }
+            }
+            requestOnlineID = NULL_KEY;
+        }
+        else if (queryid == notecardQueryId)
         {
             if (data == EOF) //Reached end of notecard (End Of File).
             {
@@ -902,14 +927,20 @@ default
     timer()
     {
         if (clearParticlesAfter>0)
-         {
+        {
             clearParticlesAfter--;
             if (clearParticlesAfter==0)
                 clearParticles();
-         }
+        }
 
         if (performerID != NULL_KEY)
         {
+            if (requestOnlineID == NULL_KEY)
+            {
+                if ((llGetUnixTime() - performerOnline) > (1*60)) //* check every minute
+                    requestOnlineID = llRequestAgentData(performerID, DATA_ONLINE);
+            }
+
             if (endTime>0) //* not open time
             {
                 integer t = llGetUnixTime();
