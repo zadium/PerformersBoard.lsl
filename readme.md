@@ -32,10 +32,13 @@ Text https://wiki.secondlife.com/wiki/FURWARE_text/Tutorial#Creating_displays
 
 * Add Buttons with this names, copuy Click.lsl into it
 
-    ProfileImage
-    Tip (set click to Pay)
-    Signup
-    Start
-    Finish
+- ProfileImage
+- Tip (set click to Pay)
+- Signup
+- Start
+- Finish
 
 * Add ProfileImage copy ProfileImage.lsl into it (set click to pay)
+
+
+One button will say INFO.. one button will say Rules.. and the last Button will have Calendar

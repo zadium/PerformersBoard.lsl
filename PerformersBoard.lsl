@@ -4,8 +4,8 @@
  
     @author: Zai Dium
     @version: 0.17
-    @updated: "2023-05-06 00:08:22"
-    @revision: 398
+    @updated: "2023-05-06 00:26:31"
+    @revision: 414
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -21,6 +21,7 @@
 
 string FontName = "Impact512";
 
+integer OnlineTimeout = 5; //* in minutes
 integer ShowTips = FALSE; //* Show tips amount in console board
 integer AskTimes = FALSE; //* Show times available when start
 integer DefaultTime = 0; //* default time for performer, in seconds, keep it 0 to make it open time
@@ -29,13 +30,14 @@ integer WarnBefore = 1; //* in minutes
 integer WarnTimes = 4; //* in minutes
 integer RoundTime = 1; //* in minutes, this fix the time to start at right time in minutes
 integer ExtendTime = 15;//* in minutes
-integer OnlineTimeout = 1; //* in minutes
 
 integer Particles = FALSE;
 
 list MoneyList = [50, 100, 150, 200];
 
 integer interval = 1;
+
+string StartMsg = "started, good luck.";
 
 //* variables
 
@@ -344,7 +346,7 @@ start(key id, integer time)
             else
             {
                 endTime = 0;
-                llRegionSayTo(id, 0, llGetDisplayName(id) + " started, good luck.");
+                llRegionSayTo(id, 0, llGetDisplayName(id) + " " + StartMsg);
             }
             if (permitted) //* if not there is not prices to pay
                 llSetPayPrice(PAY_HIDE, MoneyList);
@@ -588,17 +590,24 @@ doCommand(string cmd, key id, list params)
     }
     else if (cmd == "start")
     {
-        if (performerID == id)
-            llRegionSayTo(id, 0, llGetDisplayName(id) + " You already started");
-        else if (performerID != NULL_KEY)
-            llRegionSayTo(id, 0, llGetDisplayName(id) + " You can not start while other performer " + llGetDisplayName(performerID) + " is started");
-        else if (isSigned(id))
+        if (!permitted)
         {
-            menuTab = TAB_START;
-            showDialog(id);
+            llRegionSayTo(id, 0, llGetDisplayName(id) + " Can't start, this board not setup for tips, please ask owner to permit it.");
         }
         else
-            llRegionSayTo(id, 0, llGetDisplayName(id) + " You are not signed.");
+        {
+            if (performerID == id)
+                llRegionSayTo(id, 0, llGetDisplayName(id) + " You already started");
+            else if (performerID != NULL_KEY)
+                llRegionSayTo(id, 0, llGetDisplayName(id) + " You can not start while other performer " + llGetDisplayName(performerID) + " is started");
+            else if (isSigned(id))
+            {
+                menuTab = TAB_START;
+                showDialog(id);
+            }
+            else
+                llRegionSayTo(id, 0, llGetDisplayName(id) + " You are not signed.");
+        }
     }
     else if (cmd == "finish")
     {
@@ -662,6 +671,12 @@ default
                 }
                 //fwTouchQuery(link, llDetectedTouchFace(0), "board");
             }
+        }
+    }
+
+    changed(integer change) {
+        if (change & CHANGED_INVENTORY) {
+            readNotecard();
         }
     }
 
@@ -852,6 +867,12 @@ default
             {
                 notecardQueryId = NULL_KEY;
                 llOwnerSay("Read performers count: " + (string)llGetListLength(id_list));
+                if (HomeURI != "")
+                {
+                    HomeURI = llToLower(HomeURI);
+                    if (llSubStringIndex(HomeURI, "http://") < 0)
+                        HomeURI = "http://"+HomeURI;
+                }
                 llMessageLinked(LINK_SET, 0, "HomeURI;"+HomeURI, NULL_KEY);
             }
             else
@@ -895,6 +916,9 @@ default
                     {
                         id_list += data;
                     }
+                    else if (name=="startmsg")
+                        if (data!="")
+                            StartMsg = data;
                 }
 
                 ++notecardLine;
