@@ -4,8 +4,8 @@
 
     @author: Zai Dium
     @version: 0.17
-    @updated: "2023-05-04 12:10:54"
-    @revision: 179
+    @updated: "2023-05-05 14:13:35"
+    @revision: 184
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -16,7 +16,9 @@
 
 //* settings
 
-string fontName = "Impact-512";
+string FontName = "Impact-512";
+
+integer ShowTips = FALSE; //* Show tips amount in console board
 
 integer warnBefore = 1; //* in minutes
 integer warnTimes = 4; //* in minutes
@@ -370,10 +372,13 @@ string getInfo()
 
 showInfo(){
     string s = "Current: " + llGetDisplayName(performerID)+"\n";
-    s += "Total Tip " + (string)total_amount;
-    if (last_paid_id != NULL_KEY)
-         s += "\nLast: " + llGetDisplayName(last_paid_id);
-    printText(s, "Tip");
+    if (ShowTips)
+    {
+        s += "Total Tip " + (string)total_amount;
+        if (last_paid_id != NULL_KEY)
+             s += "\nLast: " + llGetDisplayName(last_paid_id);
+        printText(s, "Tip");
+    }
     printText(getInfo(), "Text");
 }
 
@@ -458,7 +463,12 @@ key detectBoardID(string s)
     if (i<0)
         return NULL_KEY;
     else
-        return llList2Key(id_list, i);
+    {
+        if (i<llGetListLength(id_list))
+            return llList2Key(id_list, i);
+        else
+            return NULL_KEY;
+    }
 }
 
 clear()
@@ -735,7 +745,7 @@ default
             //llOwnerSay("FW text is up and running!");
 
             // Start sending some initialization stuff.
-            llMessageLinked(sender, 0, "c=white; a=left; f="+fontName, "fw_conf");
+            llMessageLinked(sender, 0, "c=white; a=left; f="+FontName, "fw_conf");
 
             fwAddBox("Tip", "default", 0, 0, maxLineLength, infoLines, "", "");
             fwAddBox("Text", "default", 0, infoLines, maxLineLength, 12, "", "");
