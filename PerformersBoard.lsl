@@ -4,8 +4,8 @@
 
     @author: Zai Dium
     @version: 0.17
-    @updated: "2023-05-05 15:55:11"
-    @revision: 278
+    @updated: "2023-05-05 16:04:10"
+    @revision: 283
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -25,14 +25,14 @@ integer ShowTips = FALSE; //* Show tips amount in console board
 integer AskTimes = FALSE; //* Show times available when start
 integer DefaultTime = 0; //* default time for performer, in seconds, keep it 0 to make it open time
 
-integer warnBefore = 1; //* in minutes
-integer warnTimes = 4; //* in minutes
-integer roundTime = 1; //* in minutes, this fix the time to start at right time in minutes
-integer extendTime = 15;//* in minutes
+integer WarnBefore = 1; //* in minutes
+integer WarnTimes = 4; //* in minutes
+integer RoundTime = 1; //* in minutes, this fix the time to start at right time in minutes
+integer ExtendTime = 15;//* in minutes
 
-integer particles = FALSE;
+integer Particles = FALSE;
 
-list moneyList = [2, 4, 6, 8];
+list MoneyList = [2, 4, 6, 8];
 
 integer interval = 1;
 
@@ -318,7 +318,7 @@ start(key id, integer time)
         if (time>0)
         {
             //* 60 seconds and 15 min, we round it to 15 min
-            integer startTime = llRound((float)((float)llGetUnixTime() /((float)roundTime * 60)))*roundTime*60;
+            integer startTime = llRound((float)((float)llGetUnixTime() /((float)RoundTime * 60)))*RoundTime*60;
             //llOwnerSay("time:"+(string)time);
             endTime = startTime + (time * 60); //* 60 seconds
             llRegionSayTo(performerID, 0, llGetDisplayName(id) + " Your time from " + timeToStr(startTime) + " to " +timeToStr(endTime));
@@ -328,7 +328,7 @@ start(key id, integer time)
             endTime = 0;
             llRegionSayTo(id, 0, llGetDisplayName(id) + " started, good luck.");
         }
-        llSetPayPrice(PAY_HIDE, moneyList);
+        llSetPayPrice(PAY_HIDE, MoneyList);
         updateText();
         showInfo();
         llMessageLinked(LINK_SET, 0, "profile_image", performerID);
@@ -586,6 +586,10 @@ doCommand(string cmd, key id, list params)
                 llRegionSayTo(id, 0, llGetDisplayName(id) + " Your name is removed.");
             }
     }
+    else if (cmd == "tip")
+    {
+//		llpaye
+    }
 /*        else
         llOwnerSay(cmd);*/
 }
@@ -600,6 +604,7 @@ default
         llSetPayPrice(PAY_HIDE, [PAY_HIDE, PAY_HIDE, PAY_HIDE, PAY_HIDE]);
         readNotecard();
         reset_performer();
+
         //llRequestPermissions(llGetOwner(), PERMISSION_DEBIT);
     }
 
@@ -622,30 +627,6 @@ default
                 //fwTouchQuery(link, llDetectedTouchFace(0), "board");
             }
         }
-/*        key id = llDetectedKey(0);
-        if ((id == llGetOwner()) || (isPerformer(id)))
-        {
-            menuTab = TAB_HOME;
-            showDialog(id);
-        }*/
-    /*
-        if (!permitted) {
-            if (id == llGetOwner())
-                llRequestPermissions(llGetOwner(), PERMISSION_DEBIT);
-            else
-                llRegionSayTo(id, 0, "Setup not complete, need permissions");
-        }
-        else
-        {
-            if ((id == llGetOwner()) || (isPerformer(id)))
-            {
-                menuTab = TAB_HOME;
-                showDialog(id);
-            }
-            else
-                llRegionSayTo(id, 0, llGetDisplayName(id)+" right click, then click Pay button for donation");
-        }
-        */
     }
 
     run_time_permissions(integer perm)
@@ -667,7 +648,7 @@ default
             last_paid_id = id;
             updateText();
             showInfo();
-            if (particles)
+            if (Particles)
                 sendParticles(performerID);
         }
     }
@@ -710,7 +691,7 @@ default
                         {
                             if (performerID != NULL_KEY) {
                                 if (endTime>0) {
-                                    endTime = endTime + extendTime * 60;
+                                    endTime = endTime + ExtendTime * 60;
                                     llRegionSayTo(performerID, 0, "Time extended to " + timeToStr(endTime));
                                 }
                             }
@@ -821,23 +802,23 @@ default
                         AskTimes = toBool(data);
                     else if (name=="defaulttime")
                         DefaultTime = (integer)data;
-                    if (name=="warnbefore")
-                        warnBefore = toBool(data);
-                    else if (name=="warntimes")
-                        warnTimes = toBool(data);
-                    else if (name=="roundtime")
-                        roundTime = toBool(data);
-                    else if (name=="extendtime")
-                        extendTime = toBool(data);
+                    if (name=="WarnBefore")
+                        WarnBefore = toBool(data);
+                    else if (name=="WarnTimes")
+                        WarnTimes = toBool(data);
+                    else if (name=="RoundTime")
+                        RoundTime = toBool(data);
+                    else if (name=="ExtendTime")
+                        ExtendTime = toBool(data);
                     if (name=="homeuri")
                     {
                         HomeURI = data;
                     }
-                    if (name=="particles")
-                        particles = toBool(data);
+                    if (name=="Particles")
+                        Particles = toBool(data);
                     if (name == "money")
                     {
-                        moneyList = llParseString2List(data, [","], [" "]);
+                        MoneyList = llParseString2List(data, [","], [" "]);
                     }
                     else if (name=="add")
                     {
@@ -899,11 +880,11 @@ default
                  if ((endTime - t) <= 0) {
                     finish(performerID);
                 }
-                 else if (warnBefore > 0)
+                 else if (WarnBefore > 0)
                 {
-                    if ((endTime - t) < (warnBefore * 60))
+                    if ((endTime - t) < (WarnBefore * 60))
                     {
-                        if ((t - lastWarnTime) > ((warnBefore * 60) / warnTimes))
+                        if ((t - lastWarnTime) > ((WarnBefore * 60) / WarnTimes))
                         {
                             lastWarnTime = t;
                             sendWarnning();
