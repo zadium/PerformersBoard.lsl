@@ -4,8 +4,8 @@
 
     @author: Zai Dium
     @version: 0.17
-    @updated: "2023-05-05 17:42:49"
-    @revision: 310
+    @updated: "2023-05-05 17:44:27"
+    @revision: 311
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -605,6 +605,7 @@ doCommand(string cmd, key id, list params)
             {
                 remove(id);
                 llRegionSayTo(id, 0, llGetDisplayName(id) + " Your name is removed.");
+                showInfo();
             }
     }
     else if (cmd == "tip")
