@@ -5,8 +5,8 @@
     @author: Zai Dium
     @source: https://github.com/zadium/PerformersBoard
     @version: 0.17
-    @updated: "2023-05-06 21:56:08"
-    @revision: 495
+    @updated: "2023-05-06 22:34:22"
+    @revision: 497
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -109,6 +109,7 @@ printText(string s, string box)
 
 list id_list = [];
 list name_list = [];
+list stream_list = [];
 list time_list = [];
 
 integer endTime = 0;
@@ -526,6 +527,7 @@ integer indexOfID(key id)
 addKeyName(key id, string name){
     id_list += id;
     name_list += name;
+    stream_list += [""];
     time_list += [0];
 }
 
@@ -549,6 +551,7 @@ remove(key id){
     if (index >= 0) {
         id_list = llDeleteSubList(id_list, index, index);
         name_list = llDeleteSubList(name_list, index, index);
+        stream_list = llDeleteSubList(stream_list, index, index);
         time_list = llDeleteSubList(time_list, index, index);
     }
 }
@@ -557,8 +560,10 @@ moveTop(key id){
     integer index = indexOfID(id);
     if (index >= 0) {
         key time = llList2Key(time_list, index);
+        key stream = llList2Key(stream_list, index);
         id_list = [id] + llDeleteSubList(id_list, index, index);
         name_list = [llGetDisplayName(id)] + llDeleteSubList(name_list, index, index);
+        stream_list = [stream] + llDeleteSubList(stream_list, index, index);
         time_list = [time] + llDeleteSubList(time_list, index, index);
     }
 }
@@ -592,6 +597,7 @@ clear()
     HomeURI = "";
     id_list = [];
     name_list = [];
+    stream_list = [];
     time_list = [];
     reset_performer();
 }
