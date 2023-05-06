@@ -5,8 +5,8 @@
     @author: Zai Dium
     @source: https://github.com/zadium/PerformersBoard
     @version: 0.17
-    @updated: "2023-05-06 21:36:11"
-    @revision: 493
+    @updated: "2023-05-06 21:56:08"
+    @revision: 495
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -474,8 +474,8 @@ string getInfo()
     return s;
 }
 
-showInfo(){
-
+showHeader()
+{
     string s = "Current Performer: \n";
     if (performerID !=NULL_KEY)
         s += llGetDisplayName(performerID);
@@ -487,6 +487,11 @@ showInfo(){
              s += "\nLast: " + llGetDisplayName(last_paid_id);
     }
     printText(s, "Tip");
+}
+
+showInfo()
+{
+    showHeader();
     printText(getInfo(), "Text");
 }
 
@@ -584,6 +589,7 @@ key detectBoardID(string s)
 
 clear()
 {
+    HomeURI = "";
     id_list = [];
     name_list = [];
     time_list = [];
@@ -962,6 +968,7 @@ default
                     llOwnerSay("if osGetAvatarHomeURI not enabled, set HomeURI in config NC to current home server, HomeURI=http://hg.osgrid.org:80");
                 }
                 llMessageLinked(LINK_SET, 0, "HomeURI;"+HomeURI, NULL_KEY);
+                showHeader();
                 readNC("welcome");
             }
             else
