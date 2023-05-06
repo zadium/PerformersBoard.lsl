@@ -1,12 +1,12 @@
-/**
+/** 
     @name: PerformersBoard
     @description:
 
     @author: Zai Dium
     @source: https://github.com/zadium/PerformersBoard
     @version: 0.17
-    @updated: "2023-05-06 18:47:16"
-    @revision: 474
+    @updated: "2023-05-06 21:36:11"
+    @revision: 493
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -302,13 +302,15 @@ showDialog(key id)
     string title;
     if (menuTab == TAB_HOME)
         title = "Select command";
+    else if (menuTab == TAB_ITEM)
+        title = "Select action on " + llGetDisplayName(action_id);
     else
         title = "Select time";
     if (performerID != NULL_KEY)
         title += "\n" + llGetDisplayName(performerID);
     if (endTime>0)
-    title += "\nEnd time at "+ timeToStr(endTime);
-    llDialog(id, "Page: " + (string)(cur_page+1) + " " + title, getMenu(id), dialog_channel);
+        title += "\nEnd time at "+ timeToStr(endTime);
+    llDialog(id, "Page: " + (string)(cur_page+1) + "\n" + title, getMenu(id), dialog_channel);
     dialog_listen_id = llListen(dialog_channel, "", id, "");
 }
 
@@ -465,7 +467,7 @@ string getInfo()
         while (i<c) {
             if (s!="")
                 s = s + "\n";
-            s = s + getItem(i, FALSE)+"\n";
+            s = s + getItem(i, FALSE);
             i++;
         }
     }
@@ -559,7 +561,7 @@ moveTop(key id){
 integer detectBoardIndex(string s)
 {
     list params = llParseString2List(s,[":"],[""]);
-    string r = llList2String(params, 3);
+    string r = llList2String(params, 2);
     if (r == "")
         return -1;
     else
@@ -568,7 +570,7 @@ integer detectBoardIndex(string s)
 
 key detectBoardID(string s)
 {
-    integer i = detectBoardIndex(s);
+    integer i = detectBoardIndex(s) - infoLines;
     if (i<0)
         return NULL_KEY;
     else
@@ -721,14 +723,18 @@ default
         }
         else if (llSubStringIndex(name, "FURWARE ") == 0)
         {
-            key k = detectBoardID(name);
-            if (k != NULL_KEY)
+            if (id == llGetOwner())
             {
-                action_id = k;
-                menuTab = TAB_ITEM;
-                showDialog(id);
+                key k = detectBoardID(name);
+//                llOwnerSay(llGetDisplayName(k));
+                if (k != NULL_KEY)
+                {
+                    action_id = k;
+                    menuTab = TAB_ITEM;
+                    showDialog(id);
+                }
+                //fwTouchQuery(link, llDetectedTouchFace(0), "board");
             }
-            //fwTouchQuery(link, llDetectedTouchFace(0), "board");
         }
         else
         {
@@ -943,7 +949,8 @@ default
             if (data == EOF) //Reached end of notecard (End Of File).
             {
                 nc_ConfigQueryID = NULL_KEY;
-                llOwnerSay("Read performers count: " + (string)llGetListLength(id_list));
+                if (llGetListLength(id_list)>0)
+                    llOwnerSay("Read performers count: " + (string)llGetListLength(id_list));
                 if (HomeURI != "")
                 {
                     HomeURI = llToLower(HomeURI);
