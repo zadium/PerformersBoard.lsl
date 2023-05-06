@@ -4,7 +4,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE, TITLE AND NON-INFRINGEMENT.
 
-#### Setup FURWARE_text
+#### Build FURWARE_text
 
 Text https://wiki.secondlife.com/wiki/FURWARE_text/Tutorial#Creating_displays
 
@@ -28,7 +28,7 @@ Text https://wiki.secondlife.com/wiki/FURWARE_text/Tutorial#Creating_displays
 
 * Reset Script
 
-#### Setup Objects/Prims
+#### Build Objects/Prims
 
 * Add Buttons with this names, copuy Click.lsl into it
 
@@ -41,4 +41,10 @@ Text https://wiki.secondlife.com/wiki/FURWARE_text/Tutorial#Creating_displays
 * Add ProfileImage copy ProfileImage.lsl into it (set click to pay)
 
 
-One button will say INFO.. one button will say Rules.. and the last Button will have Calendar
+### Config
+
+if you see error when start image, and osGetAvatarHomeURI this function not work, set HomeURI in Config notecard to your grid uri with port number too
+
+    HomeURI=http://login.osgrid.org/
+
+    HomeURI=http://discoverygrid.net:8002/
