@@ -5,8 +5,8 @@
     @author: Zai Dium
     @source: https://github.com/zadium/PerformersBoard
     @version: 0.17
-    @updated: "2023-05-06 23:38:29"
-    @revision: 522
+    @updated: "2023-05-07 01:24:39"
+    @revision: 527
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -263,6 +263,7 @@ list getMenuList(key id) {
     else if (menuTab == TAB_ITEM)
     {
         l += ["Move Top", "Remove", "Cancel"];
+        l += ["Stream", "Info"];
     }
     else if (menuTab = TAB_SIGNUP)
     {
@@ -962,6 +963,31 @@ default
                         showInfo();
                         action_id = NULL_KEY;
                     }
+                    else if (message == "stream")
+                    {
+                        integer index = indexOfID(action_id);
+                        if (index>=0)
+                        {
+                            string stream = llList2String(stream_list, index);
+                            if (stream == "")
+                                llOwnerSay("No stream assigned");
+                            else
+                                setRadioStation(stream);
+                            action_id = NULL_KEY;
+                        }
+                    }
+                    else if (message == "info")
+                    {
+                        integer index = indexOfID(action_id);
+                        if (index>=0)
+                        {
+                            llOwnerSay("ID: " + llList2String(id_list, index));
+                            llOwnerSay("Name: "+llList2String(name_list, index));
+                            llOwnerSay("Stream: " + llList2String(stream_list, index));
+                            //llOwnerSay(llList2String(time_list, index));
+
+                        }
+                    }
                 }
                 closeDialog(id);
             }
@@ -1091,7 +1117,7 @@ default
             // Here you can try out your commands.
             //llOwnerSay("FW text is up and running!");
             // Start sending some initialization stuff.
-            llMessageLinked(LINK_SET, 0, "c=white; a=left; f="+FontName, "fw_conf");
+            llMessageLinked(LINK_SET, 0, "c=white; w=none; a=left; f="+FontName, "fw_conf");
             fwAddBox("Tip", "default", 0, 0, maxLineLength, infoLines, "", "");
             fwAddBox("Text", "default", 0, infoLines, maxLineLength, 12, "", "");
             llMessageLinked(LINK_SET, 0, "c=red; a=left; w=none; t=off; f="+FontName, "fw_conf:Tip");
