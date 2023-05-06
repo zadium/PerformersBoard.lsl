@@ -4,8 +4,8 @@
 
     @author: Zai Dium
     @version: 0.1
-    @updated: "2023-05-02 20:07:29"
-    @revision: 17
+    @updated: "2023-05-06 16:27:06"
+    @revision: 19
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 

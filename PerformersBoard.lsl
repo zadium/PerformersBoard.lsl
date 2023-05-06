@@ -4,8 +4,8 @@
  
     @author: Zai Dium
     @version: 0.17
-    @updated: "2023-05-06 00:26:31"
-    @revision: 414
+    @updated: "2023-05-06 18:16:07"
+    @revision: 464
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -13,13 +13,13 @@
 
     @notice:
         Use button names like "Signup", you can use capital letter in prim names, but in message recieved to compare use small letter
-        Button recieved as "button.signup"
-
+        Button recieved as "signup:cmd"
 */
 
 //* settings
 
-string FontName = "Impact512";
+//string FontName = "Impact-512";
+string FontName = "DejaVu-512";
 
 integer OnlineTimeout = 5; //* in minutes
 integer ShowTips = FALSE; //* Show tips amount in console board
@@ -120,9 +120,16 @@ integer permitted = FALSE;
 
 key requestOnlineID = NULL_KEY;
 
-key notecardQueryId = NULL_KEY;
-integer notecardLine;
-string notecardName = "Config";
+string configName = "config";
+
+string nc_textName = "";
+key nc_ConfigQueryID = NULL_KEY;
+integer nc_configLine;
+string nc_text;
+
+string textName = "";
+key nc_textQueryID = NULL_KEY;
+integer nc_textLine;
 
 list timesStrings = ["3m", "30", "60m", "1h30m", "2h", "2h30m", "3h", "4h", "5h", "6h", "12h"];
 list timesValues = [3, 30, 60, 90, 120, 150, 180, 240, 300, 360, 720];
@@ -401,14 +408,25 @@ updateText()
     llSetText(s, <1.0, 1.0, 1.0>, 1.0);
 }
 
-readNotecard()
+readConfig()
 {
-    if (llGetInventoryKey(notecardName) != NULL_KEY)
+    if (llGetInventoryKey(configName) != NULL_KEY)
     {
         clear();
-        llOwnerSay("Reading notecard");
-        notecardLine = 0;
-        notecardQueryId = llGetNotecardLine(notecardName, notecardLine);
+        //llOwnerSay("Reading notecard");
+        nc_configLine = 0;
+        nc_ConfigQueryID = llGetNotecardLine(configName, nc_configLine);
+    }
+}
+
+readNC(string nc)
+{
+    if (llGetInventoryKey(nc) != NULL_KEY)
+    {
+        nc_textLine = 0;
+        nc_textName = nc;
+        nc_text = "";
+        nc_textQueryID = llGetNotecardLine(nc_textName, nc_textLine);
     }
 }
 
@@ -581,6 +599,19 @@ fwTouchQuery(integer linkNumber, integer faceNumber, string userData) {
 
 key action_id = NULL_KEY;
 
+giveNC(key id, string nc)
+{
+    if (llGetInventoryKey(nc) != NULL_KEY)
+    {
+        llGiveInventory(id, nc);
+    }
+}
+
+giveShowNC(string text)
+{
+    readNC(text);
+}
+
 doCommand(string cmd, key id, list params)
 {
     if (cmd == "signup")
@@ -624,9 +655,28 @@ doCommand(string cmd, key id, list params)
                 showInfo();
             }
     }
+    else if (cmd == "list")
+    {
+        showInfo();
+    }
     else if (cmd == "tip")
     {
     }
+}
+
+doAction(string cmd, key id, list params)
+{
+   //* button should be named like signup:cmd or info:nc or calender:text
+    list values = llParseString2List(cmd,[":"],[""]);
+    cmd = llList2String(values,0);
+    string class = llToLower(llList2String(values, 1));
+
+    if (class=="cmd")
+        doCommand(llToLower(cmd), id, params);
+    else if (class=="nc")
+        giveNC(id, cmd);
+    else if (class=="text")
+        giveShowNC(cmd);
 }
 
 default
@@ -638,7 +688,7 @@ default
         llSetPayPrice(PAY_HIDE, [PAY_HIDE, PAY_HIDE, PAY_HIDE, PAY_HIDE]);
         llMessageLinked(LINK_SET, 0, "", "fw_reset");
         updateLinks();
-        readNotecard();
+        readConfig();
         reset_performer();
         llRequestPermissions(llGetOwner(), PERMISSION_DEBIT);
         llSetTimerEvent(interval);
@@ -654,29 +704,34 @@ default
         integer link = llDetectedLinkNumber(0);
         string name = llGetLinkName(link);
         key id = llDetectedKey(0);
-        if (id == llGetOwner())
+        if (link == 1)
         {
-            if (llDetectedLinkNumber(0) == 1) {
+            if (id == llGetOwner())
+            {
                 if (!permitted)
                    llRequestPermissions(llGetOwner(), PERMISSION_DEBIT);
             }
-            else if (llSubStringIndex(name, "FURWARE ") == 0)
+        }
+        else if (llSubStringIndex(name, "FURWARE ") == 0)
+        {
+            key k = detectBoardID(name);
+            if (k != NULL_KEY)
             {
-                key k = detectBoardID(name);
-                if (k != NULL_KEY)
-                {
-                    action_id = k;
-                    menuTab = TAB_ITEM;
-                    showDialog(id);
-                }
-                //fwTouchQuery(link, llDetectedTouchFace(0), "board");
+                action_id = k;
+                menuTab = TAB_ITEM;
+                showDialog(id);
             }
+            //fwTouchQuery(link, llDetectedTouchFace(0), "board");
+        }
+        else
+        {
+            doAction(name, id, []);
         }
     }
 
     changed(integer change) {
         if (change & CHANGED_INVENTORY) {
-            readNotecard();
+            readConfig();
         }
     }
 
@@ -771,7 +826,7 @@ default
                     }
                     else if (message == "reconfig")
                     {
-                        readNotecard();
+                        readConfig();
                     }
                 }
                 else if (menuTab == TAB_START)
@@ -861,11 +916,26 @@ default
             }
             requestOnlineID = NULL_KEY;
         }
-        else if (queryid == notecardQueryId)
+        else if (queryid == nc_textQueryID)
         {
             if (data == EOF) //Reached end of notecard (End Of File).
             {
-                notecardQueryId = NULL_KEY;
+                nc_textQueryID = NULL_KEY;
+                llMessageLinked(LINK_ROOT, 0, nc_text, "fw_data:Text");
+                nc_text = "";
+            }
+            else
+            {
+                nc_text += data+"\n";
+                nc_textLine++;
+                nc_textQueryID = llGetNotecardLine(nc_textName, nc_textLine); //Query the dataserver for the next notecard line.
+            }
+        }
+        else if (queryid == nc_ConfigQueryID)
+        {
+            if (data == EOF) //Reached end of notecard (End Of File).
+            {
+                nc_ConfigQueryID = NULL_KEY;
                 llOwnerSay("Read performers count: " + (string)llGetListLength(id_list));
                 if (HomeURI != "")
                 {
@@ -873,7 +943,12 @@ default
                     if (llSubStringIndex(HomeURI, "http://") < 0)
                         HomeURI = "http://"+HomeURI;
                 }
+                else
+                {
+                    llOwnerSay("if osGetAvatarHomeURI not enabled, set HomeURI in config NC to current home server, HomeURI=http://hg.osgrid.org:80");
+                }
                 llMessageLinked(LINK_SET, 0, "HomeURI;"+HomeURI, NULL_KEY);
+                readNC("welcome");
             }
             else
             {
@@ -921,8 +996,8 @@ default
                             StartMsg = data;
                 }
 
-                ++notecardLine;
-                notecardQueryId = llGetNotecardLine(notecardName, notecardLine); //Query the dataserver for the next notecard line.
+                ++nc_configLine;
+                nc_ConfigQueryID = llGetNotecardLine(configName, nc_configLine); //Query the dataserver for the next notecard line.
             }
         }
     }
@@ -945,14 +1020,9 @@ default
         else
         {
             list params = llParseString2List(message,[";"],[""]);
-            string cmd = llToLower(llList2String(params,0));
+            string cmd = llList2String(params,0); //* do not lower text
             params = llDeleteSubList(params, 0, 0);
-            if (cmd == "button.signup")
-                doCommand("signup", id, params);
-            else if (cmd == "button.start")
-                doCommand("start", id, params);
-            else if (cmd == "button.finish")
-                doCommand("finish", id, params);
+            doAction(cmd, id, params);
         }
     }
 
