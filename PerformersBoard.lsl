@@ -5,8 +5,8 @@
     @author: Zai Dium
     @source: https://github.com/zadium/PerformersBoard
     @version: 0.17
-    @updated: "2023-05-06 22:34:22"
-    @revision: 497
+    @updated: "2023-05-06 23:38:29"
+    @revision: 522
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -21,6 +21,8 @@
 
 //string FontName = "Impact-512";
 string FontName = "DejaVu-512";
+
+string defaultStream = "";
 
 integer OnlineTimeout = 5; //* in minutes
 integer ShowTips = FALSE; //* Show tips amount in console board
@@ -114,6 +116,7 @@ list time_list = [];
 
 integer endTime = 0;
 key performerID = NULL_KEY;
+string performerStream = "";
 integer performerOnline = 0;
 integer lastWarnTime = 0;
 
@@ -284,6 +287,7 @@ list getMenu(key id)
     }
 }
 
+integer input_channel;
 integer dialog_channel;
 integer cur_page; //* current menu page
 integer dialog_listen_id;
@@ -300,6 +304,7 @@ showDialog(key id)
     llListenRemove(dialog_listen_id);
     menuAgentID = id;
     dialog_channel = -1 - (integer)("0x" + llGetSubString( (string) llGetKey(), -7, -1) );
+    input_channel = dialog_channel + 1;
     string title;
     if (menuTab == TAB_HOME)
         title = "Select command";
@@ -346,6 +351,13 @@ start(key id, integer time)
         if (permitted)
         {
             performerID = id;
+            integer index = indexOfID(id);
+            if (index>=0)
+                performerStream = llList2String(stream_list, index);
+            else
+                performerStream = "";
+            if (performerStream != "")
+                setRadioStation(performerStream);
             if (time>0)
             {
                 //* 60 seconds and 15 min, we round it to 15 min
@@ -377,8 +389,10 @@ reset_performer() {
     endTime = 0;
     lastWarnTime = 0;
     performerID = NULL_KEY;
+    performerStream = "";
     performerOnline = 0;
     requestOnlineID = NULL_KEY;
+    setRadioStation(defaultStream);
     llMessageLinked(LINK_SET, 0, "profile_image", NULL_KEY);
     llSetPayPrice(PAY_HIDE, [PAY_HIDE, PAY_HIDE, PAY_HIDE, PAY_HIDE]);
 }
@@ -461,7 +475,7 @@ string getInfo()
     string s = "";
     integer c = llGetListLength(id_list);
     if (c == 0)
-        s = "No performers is signed.";
+        s = "No performers are signed.";
     else
     {
         integer i = 0;
@@ -481,12 +495,13 @@ showHeader()
     if (performerID !=NULL_KEY)
         s += llGetDisplayName(performerID);
     s += "\n";
-    if (ShowTips)
+    s += performerStream + "\n";
+/*    if (ShowTips)
     {
         s += "Total Tips: " + (string)total_amount;
         if (last_paid_id != NULL_KEY)
              s += "\nLast: " + llGetDisplayName(last_paid_id);
-    }
+    }*/
     printText(s, "Tip");
 }
 
@@ -640,6 +655,18 @@ doCommand(string cmd, key id, list params)
         menuTab = TAB_SIGNUP;
         showDialog(id);
     }
+    else if (cmd == "stream")
+    {
+        if (indexOfID(id)<0)
+            llRegionSayTo(id, 0, "Sorry you are not signed");
+        else if (dialog_listen_id>0)
+            llRegionSayTo(id, 0, "Sorry the board is busy with another user, try again later");
+        else
+        {
+            llTextBox(id, "Enter your stream:", input_channel);
+            dialog_listen_id = llListen(input_channel, "", id, "");
+        }
+    }
     else if (cmd == "start")
     {
         if (!permitted)
@@ -698,6 +725,24 @@ doAction(string cmd, key id, list params)
         giveNC(id, cmd);
     else if (class=="text")
         giveShowNC(cmd);
+}
+
+string radioStation = "";
+
+setAgentStream(key id, string stream)
+{
+    integer index = indexOfID(id);
+    if (index >= 0)
+    {
+        stream_list = llListReplaceList(stream_list, [stream], index, index);
+    }
+}
+
+setRadioStation(string station)
+{
+    radioStation = station;
+//    llShout(0, "Radio stream now: " + station);
+    llSetParcelMusicURL(station);
 }
 
 default
@@ -794,7 +839,15 @@ default
 
     listen(integer channel, string name, key id, string message)
     {
-        if (channel == dialog_channel)
+        if (channel == input_channel)
+        {
+            llListenRemove(dialog_listen_id);
+            dialog_listen_id = 0; //* we check it in closedialog, to not close it if it show dialog again
+            message = llToLower(message);
+            llRegionSayTo(id, 0, "Stream set to: " + message);
+            setAgentStream(id, message);
+        }
+        else if (channel == dialog_channel)
         {
             message = llToLower(message);
             llListenRemove(dialog_listen_id);
@@ -988,7 +1041,9 @@ default
                         data = llStringTrim(llGetSubString(data, p + 1, -1), STRING_TRIM);
                     }
 
-                    if (name=="showtips")
+                    if (name=="stream")
+                        defaultStream = data;
+                    else if (name=="showtips")
                         ShowTips = toBool(data);
                     else if (name=="asktimes")
                         AskTimes = toBool(data);
