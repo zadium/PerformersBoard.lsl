@@ -1,11 +1,12 @@
-/**   
+/**
     @name: PerformersBoard
-    @description:  
- 
+    @description:
+
     @author: Zai Dium
+    @source: https://github.com/zadium/PerformersBoard
     @version: 0.17
-    @updated: "2023-05-06 18:16:07"
-    @revision: 464
+    @updated: "2023-05-06 18:47:16"
+    @revision: 474
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -400,7 +401,7 @@ key last_paid_id = NULL_KEY;
 updateText()
 {
     return; //*
-    string s = "Total Tip " + (string)total_amount;
+    string s = "Total Tips " + (string)total_amount;
     if (last_paid_id != NULL_KEY)
          s += "\nLast tip from " + llGetDisplayName(last_paid_id);
     if (performerID != NULL_KEY)
@@ -456,7 +457,7 @@ string getInfo()
 {
     string s = "";
     integer c = llGetListLength(id_list);
-    if (c ==0)
+    if (c == 0)
         s = "No performers is signed.";
     else
     {
@@ -472,10 +473,14 @@ string getInfo()
 }
 
 showInfo(){
-    string s = "Current: " + llGetDisplayName(performerID)+"\n";
+
+    string s = "Current Performer: \n";
+    if (performerID !=NULL_KEY)
+        s += llGetDisplayName(performerID);
+    s += "\n";
     if (ShowTips)
     {
-        s += "Total Tip " + (string)total_amount;
+        s += "Total Tips: " + (string)total_amount;
         if (last_paid_id != NULL_KEY)
              s += "\nLast: " + llGetDisplayName(last_paid_id);
     }
@@ -485,7 +490,7 @@ showInfo(){
 
 integer indexOfName(string name)
 {
-    integer len = llGetListLength( name_list );
+    integer len = llGetListLength(name_list);
     integer i;
     for( i = 0; i < len; i++ )
     {
@@ -536,6 +541,7 @@ remove(key id){
     integer index = indexOfID(id);
     if (index >= 0) {
         id_list = llDeleteSubList(id_list, index, index);
+        name_list = llDeleteSubList(name_list, index, index);
         time_list = llDeleteSubList(time_list, index, index);
     }
 }
@@ -545,6 +551,7 @@ moveTop(key id){
     if (index >= 0) {
         key time = llList2Key(time_list, index);
         id_list = [id] + llDeleteSubList(id_list, index, index);
+        name_list = [llGetDisplayName(id)] + llDeleteSubList(name_list, index, index);
         time_list = [time] + llDeleteSubList(time_list, index, index);
     }
 }

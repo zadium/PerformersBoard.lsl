@@ -30,16 +30,17 @@ Text https://wiki.secondlife.com/wiki/FURWARE_text/Tutorial#Creating_displays
 
 #### Build Objects/Prims
 
-* Add Buttons with this names, copuy Click.lsl into it
+* Add Buttons with this names, `text` will show notecard on console board, `nc` will give nc to toucher
 
-- ProfileImage
+- ProfileImage (set click to Pay)
 - Tip (set click to Pay)
-- Signup
-- Start
-- Finish
-
-* Add ProfileImage copy ProfileImage.lsl into it (set click to pay)
-
+- Signup:cmd
+- Start:cmd
+- Finish:cmd
+- List:cmd
+- info:text
+- rules:nc
+- calender:nc
 
 ### Config
 
@@ -48,3 +49,5 @@ if you see error when start image, and osGetAvatarHomeURI this function not work
     HomeURI=http://login.osgrid.org/
 
     HomeURI=http://discoverygrid.net:8002/
+
+    HomeURI=http://grid.wolfterritories.org:8002/
