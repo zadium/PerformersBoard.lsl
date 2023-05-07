@@ -5,8 +5,8 @@
     @author: Zai Dium
     @source: https://github.com/zadium/PerformersBoard.lsl
     @version: 0.17
-    @updated: "2023-05-07 15:58:13"
-    @revision: 556
+    @updated: "2023-05-07 23:47:02"
+    @revision: 561
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -252,7 +252,7 @@ list getMenuList(key id) {
     }
     else if (menuTab == TAB_START)
     {
-        l += ["Start", "Cancel"];
+        l += ["Stream", "Start", "Remove", "Cancel"];
         if (AskTimes)
             l += timesStrings;
     }
@@ -357,8 +357,10 @@ start(key id, integer time)
                 performerStream = llList2String(stream_list, index);
             else
                 performerStream = "";
+
             if (performerStream != "")
                 setRadioStation(performerStream);
+
             if (time>0)
             {
                 //* 60 seconds and 15 min, we round it to 15 min
@@ -744,7 +746,7 @@ setAgentStream(key id, string stream)
 {
     if (performerID == id)
     {
-        if (performerStream =="")
+        if (performerStream == "")
         {
             performerStream = stream;
             setRadioStation(stream);
@@ -769,7 +771,8 @@ setRadioStation(string station)
 {
     radioStation = station;
     llSetParcelMusicURL(station);
-    llShout(0, "Radio stream now: " + station);
+    if (radioStation != "")
+        llShout(0, "Radio stream now: " + station);
 }
 
 default
@@ -948,11 +951,22 @@ default
                 }
                 else if (menuTab == TAB_START)
                 {
-                    if (message=="start")
+                    if (message=="stream")
+                    {
+                        start(id, 0);
+                        if (performerStream == "")
+                            doCommand("stream", id, []);
+                    }
+                    else if (message=="start")
                     {
                         start(id, 0);
                     }
-                    else if (message=="cancel") {
+                    else if (message=="remove")
+                    {
+                        remove(id);
+                    }
+                    else if (message=="cancel")
+                    {
                         //* nothing to do
                     }
                     else if (AskTimes)
