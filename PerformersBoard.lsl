@@ -1,19 +1,19 @@
 /** 
     @name: PerformersBoard
-    @description:
+    @description: Performer board signup(join),start,finish,list, set radio stream
 
     @author: Zai Dium
-    @source: https://github.com/zadium/PerformersBoard
+    @source: https://github.com/zadium/PerformersBoard.lsl
     @version: 0.17
-    @updated: "2023-05-07 01:24:39"
-    @revision: 527
+    @updated: "2023-05-07 14:57:47"
+    @revision: 537
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
     @ref:
 
     @notice:
-        Use button names like "Signup", you can use capital letter in prim names, but in message recieved to compare use small letter
+        Use button names like "Signup:cmd", you can use capital letter in prim names, but in message recieved to compare use small letter
         Button recieved as "signup:cmd"
 */
 
@@ -22,7 +22,7 @@
 //string FontName = "Impact-512";
 string FontName = "DejaVu-512";
 
-string defaultStream = "";
+string DefaultStream = "";
 
 integer OnlineTimeout = 5; //* in minutes
 integer ShowTips = FALSE; //* Show tips amount in console board
@@ -208,7 +208,7 @@ sendParticles(key target)
         PSYS_SRC_ANGLE_END, PI,
         PSYS_SRC_MAX_AGE, clearParticlesAfter,
         PSYS_SRC_TARGET_KEY, target,
-        PSYS_SRC_TEXTURE,  "Money"
+        PSYS_SRC_TEXTURE,  "money"
     ]
     );
 }
@@ -393,7 +393,7 @@ reset_performer() {
     performerStream = "";
     performerOnline = 0;
     requestOnlineID = NULL_KEY;
-    setRadioStation(defaultStream);
+    setRadioStation(DefaultStream);
     llMessageLinked(LINK_SET, 0, "profile_image", NULL_KEY);
     llSetPayPrice(PAY_HIDE, [PAY_HIDE, PAY_HIDE, PAY_HIDE, PAY_HIDE]);
 }
@@ -490,11 +490,21 @@ string getInfo()
     return s;
 }
 
+string getDisplayName(key id)
+{
+    string name = llGetDisplayName(id);
+    integer p = llSubStringIndex(name, "@");
+    if (p>0)
+        return llStringTrim(llGetSubString(name, 0, p-1), STRING_TRIM);
+    else
+        return name;
+}
+
 showHeader()
 {
-    string s = "Current Performer: \n";
+    string s = "Performer: ";
     if (performerID !=NULL_KEY)
-        s += llGetDisplayName(performerID);
+        s += getDisplayName(performerID);
     s += "\n";
     s += performerStream + "\n";
 /*    if (ShowTips)
@@ -658,7 +668,7 @@ doCommand(string cmd, key id, list params)
     }
     else if (cmd == "stream")
     {
-        if (indexOfID(id)<0)
+        if ((performerID!=id) && (indexOfID(id)<0))
             llRegionSayTo(id, 0, "Sorry you are not signed");
         else if (dialog_listen_id>0)
             llRegionSayTo(id, 0, "Sorry the board is busy with another user, try again later");
@@ -732,10 +742,26 @@ string radioStation = "";
 
 setAgentStream(key id, string stream)
 {
-    integer index = indexOfID(id);
-    if (index >= 0)
+    if (performerID == id)
     {
-        stream_list = llListReplaceList(stream_list, [stream], index, index);
+        if (performerStream =="")
+        {
+            performerStream = stream;
+            setRadioStation(stream);
+            showHeader();
+        }
+        else
+        {
+            llRegionSayTo(id, 0, "You can reset your stream, please ask owner to do manuall!");
+        }
+    }
+    else
+    {
+        integer index = indexOfID(id);
+        if (index >= 0)
+        {
+            stream_list = llListReplaceList(stream_list, [stream], index, index);
+        }
     }
 }
 
@@ -1068,7 +1094,9 @@ default
                     }
 
                     if (name=="stream")
-                        defaultStream = data;
+                        DefaultStream = data;
+                    else if (name=="font")
+                        FontName = data;
                     else if (name=="showtips")
                         ShowTips = toBool(data);
                     else if (name=="asktimes")

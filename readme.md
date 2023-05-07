@@ -1,8 +1,34 @@
 ### Performers Board
 
+DISCLAIMER:
+
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE, TITLE AND NON-INFRINGEMENT.
+
+Keep the source in root open permission
+
+## Features
+
+* User can add them self to the list (click Signup)
+* User can set stream url (click url icon)
+* User remove self (click finish)
+* User start his show, and stream set to the parcel
+* User finish his show (click finish)
+* Owner can remove users from the list
+* Owner can move user to top in the list
+* Tip forwared to current performer who started
+* If not started show no tip prices will show
+* Customizable button, add :nc, :text to name of buttom prim to change action
+* :nc suffex button name will send nc card with name of button, like rules:nc
+* :text suffex button name will show the nc card with name of button, like info:text, it show in the console
+* welcome notecard show at rezzing (TODO: show it when empty list)
+* config notecard to set many options
+* Free and Open source https://github.com/zadium/PerformersBoard.lsl
+
+## Disadvantage
+
+* No cut, the whole tip send to performer (TODO)
 
 #### Build FURWARE_text
 
@@ -44,10 +70,22 @@ Text https://wiki.secondlife.com/wiki/FURWARE_text/Tutorial#Creating_displays
 
 ### Config
 
-if you see error when start image, and osGetAvatarHomeURI this function not work, set HomeURI in Config notecard to your grid uri with port number too
+HomeURI: if you see error when start image, and osGetAvatarHomeURI this function not work, set HomeURI in Config notecard to your grid uri with port number too
 
     HomeURI=http://login.osgrid.org/
 
     HomeURI=http://discoverygrid.net:8002/
 
     HomeURI=http://grid.wolfterritories.org:8002/
+
+Money: You can set money list
+
+    Money=50,100,150,200
+
+AskTime: Show time for performer when start, it ask him/her what time he will spend in his/her show, and send notification before the time end
+
+    Money=1
+
+Particles: Show Particles when tip, to the performer, you can change the money.png texture
+
+    Particles=1
