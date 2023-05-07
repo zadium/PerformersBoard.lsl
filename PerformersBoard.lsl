@@ -5,8 +5,8 @@
     @author: Zai Dium
     @source: https://github.com/zadium/PerformersBoard.lsl
     @version: 0.17
-    @updated: "2023-05-07 23:47:02"
-    @revision: 561
+    @updated: "2023-05-07 23:52:55"
+    @revision: 563
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -252,7 +252,18 @@ list getMenuList(key id) {
     }
     else if (menuTab == TAB_START)
     {
-        l += ["Stream", "Start", "Remove", "Cancel"];
+        integer index = indexOfID(id);
+        string stream;
+        if (index>=0)
+            stream = llList2String(stream_list, index);
+        else
+            stream = "";
+
+        if (stream == "")
+            l += ["Stream"];
+        else
+            l += ["Start"];
+        l += ["Remove", "Cancel"];
         if (AskTimes)
             l += timesStrings;
     }
@@ -964,6 +975,7 @@ default
                     else if (message=="remove")
                     {
                         remove(id);
+                        showInfo();
                     }
                     else if (message=="cancel")
                     {
