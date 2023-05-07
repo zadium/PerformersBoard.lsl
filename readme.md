@@ -14,11 +14,13 @@ Keep the source in root open permission
 * User can set stream url (click url icon)
 * User remove self (click finish)
 * User start his show, and stream set to the parcel
+* Show who started profile picture
 * User finish his show (click finish)
 * Owner can remove users from the list
 * Owner can move user to top in the list
 * Tip forwared to current performer who started
 * If not started show no tip prices will show
+* Owner can set stream from any performers signed list, click on performer name
 * Customizable button, add :nc, :text to name of buttom prim to change action
 * :nc suffex button name will send nc card with name of button, like rules:nc
 * :text suffex button name will show the nc card with name of button, like info:text, it show in the console
@@ -77,6 +79,10 @@ HomeURI: if you see error when start image, and osGetAvatarHomeURI this function
     HomeURI=http://discoverygrid.net:8002/
 
     HomeURI=http://grid.wolfterritories.org:8002/
+
+OnlineTimeout: in minutes, check if started performer still in the region before auto finish
+
+    OnlineTimeout: 5
 
 Money: You can set money list
 

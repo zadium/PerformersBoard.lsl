@@ -5,8 +5,8 @@
     @author: Zai Dium
     @source: https://github.com/zadium/PerformersBoard.lsl
     @version: 0.17
-    @updated: "2023-05-07 14:57:47"
-    @revision: 537
+    @updated: "2023-05-07 15:35:14"
+    @revision: 540
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -401,8 +401,8 @@ reset_performer() {
 finish(key id) {
     if (id == performerID)
     {
-        llInstantMessage(performerID, "Your time is ended, Thank you " +llGetDisplayName(performerID));
         remove(id);
+        llInstantMessage(performerID, "Your time is ended, Thank you " +llGetDisplayName(performerID));
     }
     reset_performer();
     updateText();
@@ -701,7 +701,7 @@ doCommand(string cmd, key id, list params)
     }
     else if (cmd == "finish")
     {
-        if (performerID == id)
+        if ((performerID == id) || (llGetOwner() == id))
         {
             menuTab = TAB_FINISH;
             showDialog(id);
@@ -958,7 +958,7 @@ default
                 {
                     if (message=="finish")
                     {
-                        finish(id);
+                        finish(performerID);
                     }
                     else if (message=="cancel") {
                         //* nothing to do
