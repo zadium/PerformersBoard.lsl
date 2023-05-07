@@ -5,8 +5,8 @@
     @author: Zai Dium
     @source: https://github.com/zadium/PerformersBoard.lsl
     @version: 0.17
-    @updated: "2023-05-07 15:35:14"
-    @revision: 540
+    @updated: "2023-05-07 15:58:13"
+    @revision: 556
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -236,7 +236,7 @@ list getMenuList(key id) {
         else if (performerID == NULL_KEY)
         {
             if (isSigned(id))
-                l += ["Start", "Finish"];
+                l += ["Start", "Remove"];
             else
                 l += ["-", "-"];
         }
@@ -244,10 +244,10 @@ list getMenuList(key id) {
         if (id == llGetOwner())
         {
             if (performerID != NULL_KEY)
-                l += ["End"];
+                l += ["Finish"];
             else
                 l += ["-"];
-            l += ["Reconfig"];
+            l += ["Reset", "Def Stream"];
         }
     }
     else if (menuTab == TAB_START)
@@ -768,8 +768,8 @@ setAgentStream(key id, string stream)
 setRadioStation(string station)
 {
     radioStation = station;
-//    llShout(0, "Radio stream now: " + station);
     llSetParcelMusicURL(station);
+    llShout(0, "Radio stream now: " + station);
 }
 
 default
@@ -803,6 +803,11 @@ default
             {
                 if (!permitted)
                    llRequestPermissions(llGetOwner(), PERMISSION_DEBIT);
+                else
+                {
+                    menuTab = TAB_HOME;
+                    showDialog(id);
+                }
             }
         }
         else if (llSubStringIndex(name, "FURWARE ") == 0)
@@ -929,9 +934,16 @@ default
                     {
                         doCommand("finish", id, []);
                     }
-                    else if (message == "reconfig")
+                    else if (message == "reset")
                     {
-                        readConfig();
+                        if (id == llGetOwner())
+                        //readConfig();
+                            llResetScript();
+                    }
+                    else if (message == "def stream")
+                    {
+                        if (id == llGetOwner())
+                            setRadioStation(DefaultStream);
                     }
                 }
                 else if (menuTab == TAB_START)
