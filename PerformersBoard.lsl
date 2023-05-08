@@ -5,8 +5,8 @@
     @author: Zai Dium
     @source: https://github.com/zadium/PerformersBoard.lsl
     @version: 0.17
-    @updated: "2023-05-08 04:23:46"
-    @revision: 564
+    @updated: "2023-05-08 04:25:20"
+    @revision: 565
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -780,6 +780,9 @@ setAgentStream(key id, string stream)
 
 setRadioStation(string station)
 {
+    if (station == "")
+        station = DefaultStream;
+
     if (radioStation != station)
     {
         radioStation = station;
