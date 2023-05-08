@@ -1,12 +1,12 @@
-/** 
+/**
     @name: PerformersBoard
     @description: Performer board signup(join),start,finish,list, set radio stream
 
     @author: Zai Dium
     @source: https://github.com/zadium/PerformersBoard.lsl
     @version: 0.17
-    @updated: "2023-05-07 23:52:55"
-    @revision: 563
+    @updated: "2023-05-08 04:23:46"
+    @revision: 564
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -780,10 +780,13 @@ setAgentStream(key id, string stream)
 
 setRadioStation(string station)
 {
-    radioStation = station;
-    llSetParcelMusicURL(station);
-    if (radioStation != "")
-        llShout(0, "Radio stream now: " + station);
+    if (radioStation != station)
+    {
+        radioStation = station;
+        llSetParcelMusicURL(station);
+        if (radioStation != "")
+            llShout(0, "Radio stream now: " + station);
+    }
 }
 
 default
