@@ -51,12 +51,13 @@ Text https://wiki.secondlife.com/wiki/FURWARE_text/Tutorial#Creating_displays
 * Design your board
 * Upload font image Impact-512.png the root of board with name Impact-512
 * Upload "FURWARE text.lsl" into root of board
-* Upload init.lsl into root, change the font name to Impact-512 (already set)
-* Upload Performers.lsl into root
+* //--Upload init.lsl into root, change the font name to Impact-512 (already set)--
 
 * Reset Script
 
 #### Build Objects/Prims
+
+* Upload Performers.lsl into root
 
 * Add Buttons with this names, `text` will show notecard on console board, `nc` will give nc to toucher
 

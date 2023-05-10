@@ -5,8 +5,8 @@
     @author: Zai Dium
     @source: https://github.com/zadium/PerformersBoard.lsl
     @version: 0.17
-    @updated: "2023-05-08 04:25:20"
-    @revision: 565
+    @updated: "2023-05-10 23:44:23"
+    @revision: 571
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -26,6 +26,7 @@ string DefaultStream = "";
 
 integer OnlineTimeout = 5; //* in minutes
 integer ShowTips = FALSE; //* Show tips amount in console board
+integer ShowStream = FALSE; //* Show stream in header panel
 integer AskTimes = FALSE; //* Show times available when start
 integer DefaultTime = 0; //* default time for performer, in seconds, keep it 0 to make it open time
 
@@ -519,7 +520,10 @@ showHeader()
     if (performerID !=NULL_KEY)
         s += getDisplayName(performerID);
     s += "\n";
-    s += performerStream + "\n";
+    if (ShowStream)
+        s += performerStream + "\n";
+    else
+        s += "\n";
 /*    if (ShowTips)
     {
         s += "Total Tips: " + (string)total_amount;
@@ -532,7 +536,10 @@ showHeader()
 showInfo()
 {
     showHeader();
-    printText(getInfo(), "Text");
+    if ((llGetListLength(id_list) == 0) && (performerID == NULL_KEY))
+        readNC("welcome");
+    else
+        printText(getInfo(), "Text");
 }
 
 integer indexOfName(string name)
@@ -787,7 +794,7 @@ setRadioStation(string station)
     {
         radioStation = station;
         llSetParcelMusicURL(station);
-        if (radioStation != "")
+        if ((radioStation != "") && ShowStream)
             llShout(0, "Radio stream now: " + station);
     }
 }
@@ -1143,6 +1150,8 @@ default
                         FontName = data;
                     else if (name=="showtips")
                         ShowTips = toBool(data);
+                    else if (name=="showstream")
+                        ShowStream = toBool(data);
                     else if (name=="asktimes")
                         AskTimes = toBool(data);
                     else if (name=="defaulttime")
