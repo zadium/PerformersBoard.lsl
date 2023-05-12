@@ -81,9 +81,21 @@ HomeURI: if you see error when start image, and osGetAvatarHomeURI this function
 
     HomeURI=http://grid.wolfterritories.org:8002/
 
+Enable or disable Tip system
+
+    Tip=1
+
+StartTop: Only on top this number can start, disbale it by set to 0, any one can start
+
+    StartTop=0
+
+ShowStream on tip panel header or not
+
+    ShowStream=0
+
 OnlineTimeout: in minutes, check if started performer still in the region before auto finish
 
-    OnlineTimeout: 5
+    OnlineTimeout=5
 
 Money: You can set money list
 

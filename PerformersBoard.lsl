@@ -5,8 +5,8 @@
     @author: Zai Dium
     @source: https://github.com/zadium/PerformersBoard.lsl
     @version: 0.17
-    @updated: "2023-05-10 23:44:23"
-    @revision: 571
+    @updated: "2023-05-12 22:21:21"
+    @revision: 633
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -27,7 +27,9 @@ string DefaultStream = "";
 integer OnlineTimeout = 5; //* in minutes
 integer ShowTips = FALSE; //* Show tips amount in console board
 integer ShowStream = FALSE; //* Show stream in header panel
-integer AskTimes = FALSE; //* Show times available when start
+integer AskTimes = FALSE; //* Show times available when start , BUG, TODO test
+integer Tip = TRUE; //* tip system enabled
+integer StartTop = 0; //* only accept start the most top this number, disable it by set to 0
 integer DefaultTime = 0; //* default time for performer, in seconds, keep it 0 to make it open time
 
 integer WarnBefore = 1; //* in minutes
@@ -49,8 +51,8 @@ string HomeURI;
 
 integer infoLines = 4;
 integer maxLineLength = 32;
-integer maxNameLength = 20;
-integer maxNumberLength = 4;
+//integer maxNameLength = 20;
+//integer maxNumberLength = 4;
 integer maxTimeLength = 5;
 
 /**
@@ -88,19 +90,6 @@ string alignTextRight(string s, integer maxLength, string char) {
     return s;
 }
 
-list setItem(list a_list, integer index, integer a_value) {
-    return llListReplaceList(a_list, [a_value], index, index);
-}
-
-list incItem(list a_list, integer index, integer a_value) {
-    return llListReplaceList(a_list, [llList2Integer(a_list, index) + a_value], index, index);
-}
-
-debug(string s)
-{
-    llSay(0, s);
-}
-
 printText(string s, string box)
 {
     llMessageLinked(LINK_ROOT, 0, s, "fw_data:"+box);
@@ -133,7 +122,6 @@ key nc_ConfigQueryID = NULL_KEY;
 integer nc_configLine;
 string nc_text;
 
-string textName = "";
 key nc_textQueryID = NULL_KEY;
 integer nc_textLine;
 
@@ -201,7 +189,6 @@ sendParticles(key target)
 //        PSYS_PART_START_SCALE, <0.25, 0.25, 0.25>,
 //        PSYS_PART_END_SCALE,  <0.25, 0.25, 0.25>,
 
-
         PSYS_SRC_BURST_RADIUS, 5,
         PSYS_SRC_BURST_SPEED_MIN, 1,
         PSYS_SRC_BURST_SPEED_MAX, 10,
@@ -219,6 +206,7 @@ integer TAB_START = 1;
 integer TAB_ITEM = 3;
 integer TAB_SIGNUP = 4;
 integer TAB_FINISH = 5;
+integer TAB_TIMES = 6;
 //integer TAB_ADMIN = 6;
 
 key menuAgentID = NULL_KEY; //* when open dialog we save who call it, to compare when dialog confirmed by same who opened it
@@ -231,7 +219,7 @@ list getMenuList(key id) {
         if (id == performerID)
         {
             l += ["Finish"];
-            if (ShowTips)
+            if (AskTimes)
                 l += ["Extend 15m"];
         }
         else if (performerID == NULL_KEY)
@@ -241,15 +229,24 @@ list getMenuList(key id) {
             else
                 l += ["-", "-"];
         }
-
         if (id == llGetOwner())
         {
+            l += ["Reset", "Def Stream"];
+            if (Tip && permitted)
+                l += ["Tip[On]"];
+            else
+                l += ["Tip[Off]"];
             if (performerID != NULL_KEY)
-                l += ["Finish"];
+                l += ["Cut"];
             else
                 l += ["-"];
-            l += ["Reset", "Def Stream"];
         }
+    }
+    else if (menuTab == TAB_TIMES)
+    {
+        l += ["Open", "Cancel"];
+        if (AskTimes)
+            l += timesStrings;
     }
     else if (menuTab == TAB_START)
     {
@@ -261,12 +258,10 @@ list getMenuList(key id) {
             stream = "";
 
         if (stream == "")
-            l += ["Stream"];
+            l += ["Stream", "No Stream"];
         else
             l += ["Start"];
         l += ["Remove", "Cancel"];
-        if (AskTimes)
-            l += timesStrings;
     }
     else if (menuTab == TAB_FINISH)
     {
@@ -277,7 +272,7 @@ list getMenuList(key id) {
         l += ["Move Top", "Remove", "Cancel"];
         l += ["Stream", "Info"];
     }
-    else if (menuTab = TAB_SIGNUP)
+    else if (menuTab == TAB_SIGNUP)
     {
         l += ["Signup", "Cancel"];
     }
@@ -333,7 +328,7 @@ showDialog(key id)
     dialog_listen_id = llListen(dialog_channel, "", id, "");
 }
 
-closeDialog(key id)
+closeDialog()
 {
     if (dialog_listen_id>0) //*maybe showDialog called again for same user
         menuAgentID = NULL_KEY;
@@ -361,42 +356,49 @@ start(key id, integer time)
     }
     else
     {
-        if (permitted)
+        if (!Tip || permitted)
         {
-            performerID = id;
             integer index = indexOfID(id);
-            if (index>=0)
-                performerStream = llList2String(stream_list, index);
-            else
-                performerStream = "";
-
-            if (performerStream != "")
-                setRadioStation(performerStream);
-
-            if (time>0)
+            if ((StartTop > 0) && (index>=StartTop))
             {
-                //* 60 seconds and 15 min, we round it to 15 min
-                integer startTime = llRound((float)((float)llGetUnixTime() /((float)RoundTime * 60)))*RoundTime*60;
-                //llOwnerSay("time:"+(string)time);
-                endTime = startTime + (time * 60); //* 60 seconds
-                llRegionSayTo(performerID, 0, llGetDisplayName(id) + " Your time from " + timeToStr(startTime) + " to " +timeToStr(endTime));
+                llRegionSayTo(id, 0, llGetDisplayName(id) + " You can't start early wait performers in top.");
             }
             else
             {
-                endTime = 0;
-                llRegionSayTo(id, 0, llGetDisplayName(id) + " " + StartMsg);
+                performerID = id;
+                if (index>=0)
+                    performerStream = llList2String(stream_list, index);
+                else
+                    performerStream = "";
+
+                if (performerStream != "")
+                    setRadioStation(performerStream);
+
+                if (time>0)
+                {
+                    //* 60 seconds and 15 min, we round it to 15 min
+                    integer startTime = llRound((float)((float)llGetUnixTime() /((float)RoundTime * 60)))*RoundTime*60;
+                    //llOwnerSay("time:"+(string)time);
+                    endTime = startTime + (time * 60); //* 60 seconds
+                    llRegionSayTo(performerID, 0, llGetDisplayName(id) + " Your time from " + timeToStr(startTime) + " to " +timeToStr(endTime));
+                }
+                else
+                {
+                    endTime = 0;
+                    llRegionSayTo(id, 0, llGetDisplayName(id) + " " + StartMsg);
+                }
+                if (Tip && permitted) //* if not there is not prices to pay
+                    llSetPayPrice(PAY_HIDE, MoneyList);
+                else
+                    llSetPayPrice(PAY_HIDE, [PAY_HIDE, PAY_HIDE, PAY_HIDE, PAY_HIDE]);
+                remove(id);
+                updateText();
+                showInfo();
+                llMessageLinked(LINK_SET, 0, "profile_image", performerID);
             }
-            if (permitted) //* if not there is not prices to pay
-                llSetPayPrice(PAY_HIDE, MoneyList);
-            else
-                llSetPayPrice(PAY_HIDE, [PAY_HIDE, PAY_HIDE, PAY_HIDE, PAY_HIDE]);
-            remove(id);
-            updateText();
-            showInfo();
-            llMessageLinked(LINK_SET, 0, "profile_image", performerID);
         }
         else
-            llRegionSayTo(id, 0, llGetDisplayName(id) + " Can't start, this board not setup for tips, please ask owner to permit it.");
+            llRegionSayTo(id, 0, llGetDisplayName(id) + " Can't start, this board not setup for tips, please ask owner to permit it, or disable Tip system.");
     }
 }
 
@@ -412,7 +414,8 @@ reset_performer() {
     llSetPayPrice(PAY_HIDE, [PAY_HIDE, PAY_HIDE, PAY_HIDE, PAY_HIDE]);
 }
 
-finish(key id) {
+finish(key id)
+{
     if (id == performerID)
     {
         remove(id);
@@ -463,11 +466,7 @@ readNC(string nc)
     }
 }
 
-string getHeader() {
-    return "Name, Time";
-}
-
-string getItem(integer index, integer full)
+string getItem(integer index)
 {
     string s;
     s = alignTextLeft(llList2String(name_list, index), maxLineLength - maxTimeLength, " ");
@@ -497,7 +496,7 @@ string getInfo()
         while (i<c) {
             if (s!="")
                 s = s + "\n";
-            s = s + getItem(i, FALSE);
+            s = s + getItem(i);
             i++;
         }
     }
@@ -546,7 +545,7 @@ integer indexOfName(string name)
 {
     integer len = llGetListLength(name_list);
     integer i;
-    for( i = 0; i < len; i++ )
+    for(i = 0; i < len; i++)
     {
         if( llList2String(name_list, i) == name )
         {
@@ -660,10 +659,6 @@ fwAddBox(string name, string parent, integer x, integer y, integer w, integer h,
                     (string)x + "," + (string)y + "," + (string)w + "," + (string)h + ":" + style);
 }
 
-fwTouchQuery(integer linkNumber, integer faceNumber, string userData) {
-    llMessageLinked(LINK_SET, 0, userData, "fw_touchquery:" + (string)linkNumber + ":" + (string)faceNumber);
-}
-
 key action_id = NULL_KEY;
 
 giveNC(key id, string nc)
@@ -698,11 +693,16 @@ doCommand(string cmd, key id, list params)
             dialog_listen_id = llListen(input_channel, "", id, "");
         }
     }
+    else if (cmd == "times")
+    {
+        menuTab = TAB_TIMES;
+        showDialog(id);
+    }
     else if (cmd == "start")
     {
-        if (!permitted)
+        if (Tip && !permitted)
         {
-            llRegionSayTo(id, 0, llGetDisplayName(id) + " Can't start, this board not setup for tips, please ask owner to permit it.");
+            llRegionSayTo(id, 0, llGetDisplayName(id) + " Can't start, this board not setup for tips, please ask owner to permit it, or disable Tip system.");
         }
         else
         {
@@ -712,8 +712,16 @@ doCommand(string cmd, key id, list params)
                 llRegionSayTo(id, 0, llGetDisplayName(id) + " You can not start while other performer " + llGetDisplayName(performerID) + " is started");
             else if (isSigned(id))
             {
-                menuTab = TAB_START;
-                showDialog(id);
+                integer index = indexOfID(id);
+                if ((StartTop > 0) && (index>=StartTop))
+                {
+                    llRegionSayTo(id, 0, llGetDisplayName(id) + " You can't start early wait performers in top.");
+                }
+                else
+                {
+                    menuTab = TAB_START;
+                    showDialog(id);
+                }
             }
             else
                 llRegionSayTo(id, 0, llGetDisplayName(id) + " You are not signed.");
@@ -737,9 +745,6 @@ doCommand(string cmd, key id, list params)
     else if (cmd == "list")
     {
         showInfo();
-    }
-    else if (cmd == "tip")
-    {
     }
 }
 
@@ -828,13 +833,8 @@ default
         {
             if (id == llGetOwner())
             {
-                if (!permitted)
-                   llRequestPermissions(llGetOwner(), PERMISSION_DEBIT);
-                else
-                {
-                    menuTab = TAB_HOME;
-                    showDialog(id);
-                }
+                menuTab = TAB_HOME;
+                showDialog(id);
             }
         }
         else if (llSubStringIndex(name, "FURWARE ") == 0)
@@ -902,8 +902,11 @@ default
         {
             llListenRemove(dialog_listen_id);
             dialog_listen_id = 0; //* we check it in closedialog, to not close it if it show dialog again
-            message = llToLower(message);
-            llRegionSayTo(id, 0, "Stream set to: " + message);
+            message = llToLower(llStringTrim(message, STRING_TRIM));
+            if (message == "")
+                llRegionSayTo(id, 0, "no stream set");
+            else
+                llRegionSayTo(id, 0, "Stream set to: " + message);
             setAgentStream(id, message);
         }
         else if (channel == dialog_channel)
@@ -948,18 +951,26 @@ default
                             }
                         }
                     }
-                    else if (message == "end")
-                    {
-                        if (performerID != NULL_KEY)
-                            finish(performerID);
-                    }
-                    else if (message == "start")
-                    {
-                        doCommand("start", id, []);
-                    }
                     else if (message == "finish")
                     {
-                        doCommand("finish", id, []);
+                        if (performerID == id)
+                            finish(id);
+                    }
+                    else if (message == "cut")
+                    {
+                        if (id == llGetOwner())
+                            if (performerID != NULL_KEY)
+                                finish(performerID);
+                    }
+                    else if (message == "tip[on]")
+                    {
+                        Tip = FALSE;
+                        llSetPayPrice(PAY_HIDE, [PAY_HIDE, PAY_HIDE, PAY_HIDE, PAY_HIDE]);
+                    }
+                    else if (message == "tip[off]")
+                    {
+                        Tip = TRUE;
+                        llRequestPermissions(llGetOwner(), PERMISSION_DEBIT);
                     }
                     else if (message == "reset")
                     {
@@ -981,7 +992,7 @@ default
                         if (performerStream == "")
                             doCommand("stream", id, []);
                     }
-                    else if (message=="start")
+                    else if ((message=="start") || (message=="no stream"))
                     {
                         start(id, 0);
                     }
@@ -993,15 +1004,17 @@ default
                     else if (message=="cancel")
                     {
                         //* nothing to do
+                        menuTab = TAB_HOME;
                     }
-                    else if (AskTimes)
+                    menuTab = TAB_HOME;
+                }
+                else if (menuTab == TAB_TIMES)
+                {
+                    integer index = llListFindList(timesStrings, [message]);
+                    if (index>=0)
                     {
-                        integer index = llListFindList(timesStrings, [message]);
-                        if (index>=0)
-                        {
-                            integer time = llList2Integer(timesValues, index);
-                            start(id, time);
-                        }
+                        integer time = llList2Integer(timesValues, index);
+                        start(id, time);
                     }
                     menuTab = TAB_HOME;
                 }
@@ -1013,6 +1026,7 @@ default
                     }
                     else if (message=="cancel") {
                         //* nothing to do
+                        menuTab = TAB_HOME;
                     }
                 }
                 else if (menuTab == TAB_SIGNUP)
@@ -1024,6 +1038,7 @@ default
                     else if (message=="cancel")
                     {
                         //* ignore
+                        menuTab = TAB_HOME;
                     }
                 }
                 else if (menuTab == TAB_ITEM)
@@ -1066,7 +1081,7 @@ default
                         }
                     }
                 }
-                closeDialog(id);
+                closeDialog();
             }
         }
     }
@@ -1150,6 +1165,10 @@ default
                         FontName = data;
                     else if (name=="showtips")
                         ShowTips = toBool(data);
+                    else if (name=="tip")
+                        Tip = toBool(data);
+                    else if (name=="starttop")
+                        StartTop= toBool(data);
                     else if (name=="showstream")
                         ShowStream = toBool(data);
                     else if (name=="asktimes")
