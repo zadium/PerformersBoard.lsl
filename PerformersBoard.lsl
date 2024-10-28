@@ -5,8 +5,8 @@
     @author: Zai Dium
     @source: https://github.com/zadium/PerformersBoard.lsl
     @version: 0.17
-    @updated: "2024-10-28 12:21:34"
-    @revision: 648
+    @updated: "2024-10-28 13:02:53"
+    @revision: 681
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -209,7 +209,6 @@ integer TAB_FINISH = 5;
 integer TAB_TIMES = 6;
 //integer TAB_ADMIN = 6;
 
-key menuAgentID = NULL_KEY; //* when open dialog we save who call it, to compare when dialog confirmed by same who opened it
 integer menuTab = 0;
 
 list getMenuList(key id) {
@@ -237,14 +236,14 @@ list getMenuList(key id) {
             else
                 l += ["Tip[Off]"];
             if (performerID != NULL_KEY)
-                l += ["Cut"];
+                l += ["Stop"];
             else
                 l += ["-"];
         }
     }
     else if (menuTab == TAB_TIMES)
     {
-        l += ["Open", "Cancel"];
+        l += ["Open"];
         if (AskTimes)
             l += timesStrings;
     }
@@ -261,20 +260,20 @@ list getMenuList(key id) {
             l += ["Stream", "No Stream"];
         else
             l += ["Start"];
-        l += ["Remove", "Cancel"];
+        l += ["Remove"];
     }
     else if (menuTab == TAB_FINISH)
     {
-        l += ["Finish", "Cancel"];
+        l += ["Finish"];
     }
     else if (menuTab == TAB_ITEM)
     {
-        l += ["Move Top", "Remove", "Cancel"];
-        l += ["Stream", "Info"];
+        l += ["Move Top", "Delete"];
+        l += ["Set Stream", "Info"];
     }
     else if (menuTab == TAB_SIGNUP)
     {
-        l += ["Signup", "Cancel"];
+        l += ["Signup"];
     }
     return l;
 }
@@ -299,20 +298,13 @@ integer input_channel;
 integer dialog_channel;
 integer cur_page; //* current menu page
 integer dialog_listen_id;
+integer input_listen_id;
+
+key action_id = NULL_KEY; //* id of user in the console lines, when clicked to remove or do any action on it
 
 showDialog(key id)
 {
 //* nop we cant check it, what if ingored :(
-/*    if (dialog_listen_id>0)
-    {
-        llRegionSayTo(id, 0, "Board is busy with another user, please wait and try again");
-        return;
-    }
-*/
-    llListenRemove(dialog_listen_id);
-    menuAgentID = id;
-    dialog_channel = -1 - (integer)("0x" + llGetSubString( (string) llGetKey(), -7, -1) );
-    input_channel = dialog_channel + 1;
     string title;
     if (menuTab == TAB_HOME)
         title = "Select command";
@@ -332,14 +324,13 @@ showDialog(key id)
         title += "\n" + llGetDisplayName(performerID);
     if (endTime>0)
         title += "\nEnd time at "+ timeToStr(endTime);
-    llDialog(id, "Page: " + (string)(cur_page+1) + "\n" + title, getMenu(id), dialog_channel);
-    dialog_listen_id = llListen(dialog_channel, "", id, "");
-}
 
-closeDialog()
-{
-    if (dialog_listen_id>0) //*maybe showDialog called again for same user
-        menuAgentID = NULL_KEY;
+    string s;
+    if (cur_page>0)
+        s = "Page: " + (string)(cur_page+1) + "\n";
+
+    llDialog(id, s + title, getMenu(id), dialog_channel);
+    dialog_listen_id = llListen(dialog_channel, "", id, "");
 }
 
 string timeToStr(integer time)
@@ -659,8 +650,6 @@ fwAddBox(string name, string parent, integer x, integer y, integer w, integer h,
                     (string)x + "," + (string)y + "," + (string)w + "," + (string)h + ":" + style);
 }
 
-key action_id = NULL_KEY;
-
 giveNC(key id, string nc)
 {
     if (llGetInventoryKey(nc) != NULL_KEY)
@@ -685,12 +674,10 @@ doCommand(string cmd, key id, list params)
     {
         if ((performerID!=id) && (indexOfID(id)<0))
             llRegionSayTo(id, 0, "Sorry you are not signed");
-        else if (dialog_listen_id>0)
-            llRegionSayTo(id, 0, "Sorry the board is busy with another user, try again later");
         else
         {
             llTextBox(id, "Enter your stream:", input_channel);
-            dialog_listen_id = llListen(input_channel, "", id, "");
+            input_listen_id = llListen(input_channel, "", id, "");
         }
     }
     else if (cmd == "times")
@@ -808,6 +795,9 @@ default
 {
     state_entry()
     {
+        dialog_channel = -1 - (integer)("0x" + llGetSubString( (string) llGetKey(), -7, -1) );
+        input_channel = dialog_channel + 1;
+
         llSetText("", <0.0, 0.0, 0.0>, 0.0);
         clearParticles();
         llSetPayPrice(PAY_HIDE, [PAY_HIDE, PAY_HIDE, PAY_HIDE, PAY_HIDE]);
@@ -901,8 +891,8 @@ default
     {
         if (channel == input_channel)
         {
-            llListenRemove(dialog_listen_id);
-            dialog_listen_id = 0; //* we check it in closedialog, to not close it if it show dialog again
+            llListenRemove(input_listen_id);
+            input_listen_id = 0; //* we check it in closedialog, to not close it if it show dialog again
             message = llToLower(llStringTrim(message, STRING_TRIM));
             if (message == "")
                 llRegionSayTo(id, 0, "no stream set");
@@ -913,8 +903,7 @@ default
         else if (channel == dialog_channel)
         {
             message = llToLower(message);
-            llListenRemove(dialog_listen_id);
-            dialog_listen_id = 0; //* we check it in closedialog, to not close it if it show dialog again
+
             if (message == "---")
             {
                 cur_page = 0;
@@ -934,82 +923,109 @@ default
                 showDialog(id);
             }
             //* Commands
-            else if (menuAgentID != id) //* accept it from same who last one opened it
-                llRegionSayTo(id, 0, "Sorry action is interrupted by another user");
             else
             {
-                if (menuTab == TAB_HOME)
+                if (message == "extend 15m")
                 {
-                    if (message == "extend 15m")
+                    if (AskTimes)
                     {
-                        if (AskTimes)
-                        {
-                            if (performerID != NULL_KEY) {
-                                if (endTime>0) {
-                                    endTime = endTime + ExtendTime * 60;
-                                    llRegionSayTo(performerID, 0, "Time extended to " + timeToStr(endTime));
-                                }
+                        if (performerID != NULL_KEY) {
+                            if (endTime>0) {
+                                endTime = endTime + ExtendTime * 60;
+                                llRegionSayTo(performerID, 0, "Time extended to " + timeToStr(endTime));
                             }
                         }
                     }
-                    else if (message == "finish")
-                    {
-                        if (performerID == id)
-                            finish(id);
-                    }
-                    else if (message == "cut")
-                    {
-                        if (id == llGetOwner())
-                            if (performerID != NULL_KEY)
-                                finish(performerID);
-                    }
-                    else if (message == "tip[on]")
-                    {
-                        Tip = FALSE;
-                        llSetPayPrice(PAY_HIDE, [PAY_HIDE, PAY_HIDE, PAY_HIDE, PAY_HIDE]);
-                    }
-                    else if (message == "tip[off]")
-                    {
-                        Tip = TRUE;
-                        llRequestPermissions(llGetOwner(), PERMISSION_DEBIT);
-                    }
-                    else if (message == "reset")
-                    {
-                        if (id == llGetOwner())
-                        //readConfig();
-                            llResetScript();
-                    }
-                    else if (message == "def stream")
-                    {
-                        if (id == llGetOwner())
-                            setRadioStation(DefaultStream);
-                    }
                 }
-                else if (menuTab == TAB_START)
+                else if (message=="finish")
                 {
-                    if (message=="stream")
-                    {
-                        start(id, 0);
-                        if (performerStream == "")
-                            doCommand("stream", id, []);
-                    }
-                    else if ((message=="start") || (message=="no stream"))
-                    {
-                        start(id, 0);
-                    }
-                    else if (message=="remove")
-                    {
-                        remove(id);
-                        showInfo();
-                    }
-                    else if (message=="cancel")
-                    {
-                        //* nothing to do
-                        menuTab = TAB_HOME;
-                    }
-                    menuTab = TAB_HOME;
+                    if ((performerID == id) || (llGetOwner() == id))
+                        if (performerID != NULL_KEY)
+                            finish(performerID);
                 }
-                else if (menuTab == TAB_TIMES)
+                else if (message == "stop")
+                {
+                    if (id == llGetOwner())
+                        if (performerID != NULL_KEY)
+                            finish(performerID);
+                }
+                else if (message == "tip[on]")
+                {
+                    Tip = FALSE;
+                    llSetPayPrice(PAY_HIDE, [PAY_HIDE, PAY_HIDE, PAY_HIDE, PAY_HIDE]);
+                }
+                else if (message == "tip[off]")
+                {
+                    Tip = TRUE;
+                    llRequestPermissions(llGetOwner(), PERMISSION_DEBIT);
+                }
+                else if (message == "reset")
+                {
+                    if (id == llGetOwner())
+                        llResetScript();
+                }
+                else if (message == "def stream")
+                {
+                    if (id == llGetOwner())
+                        setRadioStation(DefaultStream);
+                }
+                else if (message=="stream")
+                {
+                    start(id, 0);
+                    if (performerStream == "")
+                        doCommand("stream", id, []);
+                }
+                else if ((message=="start") || (message=="no stream"))
+                {
+                    start(id, 0);
+                }
+                else if (message=="remove")
+                {
+                    remove(id);
+                    showInfo();
+                }
+                if (message=="signup")
+                {
+                    signup(id);
+                }
+                else if (message=="set stream")
+                {
+                    integer index = indexOfID(action_id);
+                    if (index>=0)
+                    {
+                        string stream = llList2String(stream_list, index);
+                        if (stream == "")
+                            llOwnerSay("No stream assigned");
+                        else
+                            setRadioStation(stream);
+                        action_id = NULL_KEY;
+                    }
+                }
+                if (message == "delete")
+                {
+                    remove(action_id);
+                    showInfo();
+                    action_id = NULL_KEY;
+                }
+                else if (message == "move top")
+                {
+                    moveTop(action_id);
+                    showInfo();
+                    action_id = NULL_KEY;
+                }
+                else if (message == "info")
+                {
+                    integer index = indexOfID(action_id);
+                    if (index>=0)
+                    {
+                        llOwnerSay("ID: " + llList2String(id_list, index));
+                        llOwnerSay("Name: "+llList2String(name_list, index));
+                        llOwnerSay("Stream: " + llList2String(stream_list, index));
+                        //llOwnerSay(llList2String(time_list, index));
+
+                    }
+                }
+                else if ((integer)llGetSubString(message, 0, 0)>0) //* It is a time
                 {
                     integer index = llListFindList(timesStrings, [message]);
                     if (index>=0)
@@ -1017,72 +1033,7 @@ default
                         integer time = llList2Integer(timesValues, index);
                         start(id, time);
                     }
-                    menuTab = TAB_HOME;
                 }
-                else if (menuTab == TAB_FINISH)
-                {
-                    if (message=="finish")
-                    {
-                        finish(performerID);
-                    }
-                    else if (message=="cancel") {
-                        //* nothing to do
-                        menuTab = TAB_HOME;
-                    }
-                }
-                else if (menuTab == TAB_SIGNUP)
-                {
-                    if (message=="signup")
-                    {
-                        signup(id);
-                    }
-                    else if (message=="cancel")
-                    {
-                        //* ignore
-                        menuTab = TAB_HOME;
-                    }
-                }
-                else if (menuTab == TAB_ITEM)
-                {
-                    if (message == "remove")
-                    {
-                        remove(action_id);
-                        showInfo();
-                        action_id = NULL_KEY;
-                    }
-                    else if (message == "move top")
-                    {
-                        moveTop(action_id);
-                        showInfo();
-                        action_id = NULL_KEY;
-                    }
-                    else if (message == "stream")
-                    {
-                        integer index = indexOfID(action_id);
-                        if (index>=0)
-                        {
-                            string stream = llList2String(stream_list, index);
-                            if (stream == "")
-                                llOwnerSay("No stream assigned");
-                            else
-                                setRadioStation(stream);
-                            action_id = NULL_KEY;
-                        }
-                    }
-                    else if (message == "info")
-                    {
-                        integer index = indexOfID(action_id);
-                        if (index>=0)
-                        {
-                            llOwnerSay("ID: " + llList2String(id_list, index));
-                            llOwnerSay("Name: "+llList2String(name_list, index));
-                            llOwnerSay("Stream: " + llList2String(stream_list, index));
-                            //llOwnerSay(llList2String(time_list, index));
-
-                        }
-                    }
-                }
-                closeDialog();
             }
         }
     }
