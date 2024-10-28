@@ -5,8 +5,8 @@
     @author: Zai Dium
     @source: https://github.com/zadium/PerformersBoard.lsl
     @version: 0.17
-    @updated: "2023-05-12 22:21:21"
-    @revision: 633
+    @updated: "2024-10-28 12:21:34"
+    @revision: 648
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -318,8 +318,16 @@ showDialog(key id)
         title = "Select command";
     else if (menuTab == TAB_ITEM)
         title = "Select action on " + llGetDisplayName(action_id);
-    else
+    else if (menuTab == TAB_START)
+        title = "You want to start?";
+    else if (menuTab == TAB_SIGNUP)
+        title = "You want to signup?";
+    else if (menuTab == TAB_FINISH)
+        title = "You want to finish?";
+    else if (menuTab == TAB_TIMES)
         title = "Select time";
+    else
+        title = "Select";
     if (performerID != NULL_KEY)
         title += "\n" + llGetDisplayName(performerID);
     if (endTime>0)
@@ -394,7 +402,7 @@ start(key id, integer time)
                 remove(id);
                 updateText();
                 showInfo();
-                llMessageLinked(LINK_SET, 0, "profile_image", performerID);
+                llMessageLinked(LINK_SET, 0, "ProfileImage", performerID);
             }
         }
         else
@@ -410,7 +418,7 @@ reset_performer() {
     performerOnline = 0;
     requestOnlineID = NULL_KEY;
     setRadioStation(DefaultStream);
-    llMessageLinked(LINK_SET, 0, "profile_image", NULL_KEY);
+    llMessageLinked(LINK_SET, 0, "ProfileImage", NULL_KEY);
     llSetPayPrice(PAY_HIDE, [PAY_HIDE, PAY_HIDE, PAY_HIDE, PAY_HIDE]);
 }
 
@@ -513,6 +521,12 @@ string getDisplayName(key id)
         return name;
 }
 
+sendConfig()
+{
+    llMessageLinked(LINK_SET, 0, "HomeURI;"+HomeURI, NULL_KEY);
+    llMessageLinked(LINK_SET, 0, "ProfileImage", performerID);
+}
+
 showHeader()
 {
     string s = "Performer: ";
@@ -539,20 +553,6 @@ showInfo()
         readNC("welcome");
     else
         printText(getInfo(), "Text");
-}
-
-integer indexOfName(string name)
-{
-    integer len = llGetListLength(name_list);
-    integer i;
-    for(i = 0; i < len; i++)
-    {
-        if( llList2String(name_list, i) == name )
-        {
-            return i;
-        }
-    }
-    return -1;
 }
 
 integer indexOfID(key id)
@@ -715,7 +715,7 @@ doCommand(string cmd, key id, list params)
                 integer index = indexOfID(id);
                 if ((StartTop > 0) && (index>=StartTop))
                 {
-                    llRegionSayTo(id, 0, llGetDisplayName(id) + " You can't start early wait performers in top.");
+                    llRegionSayTo(id, 0, llGetDisplayName(id) + " You can't start early wait performers in top of list.");
                 }
                 else
                 {
@@ -729,7 +729,7 @@ doCommand(string cmd, key id, list params)
     }
     else if (cmd == "finish")
     {
-        if ((performerID == id) || (llGetOwner() == id))
+        if ((performerID == id) || ((performerID != NULL_KEY) && (llGetOwner() == id)))
         {
             menuTab = TAB_FINISH;
             showDialog(id);
@@ -859,7 +859,8 @@ default
     }
 
     changed(integer change) {
-        if (change & CHANGED_INVENTORY) {
+        if (change & CHANGED_INVENTORY)
+        {
             readConfig();
         }
     }
@@ -1144,7 +1145,7 @@ default
                 {
                     llOwnerSay("if osGetAvatarHomeURI not enabled, set HomeURI in config NC to current home server, HomeURI=http://hg.osgrid.org:80");
                 }
-                llMessageLinked(LINK_SET, 0, "HomeURI;"+HomeURI, NULL_KEY);
+                sendConfig();
                 showHeader();
                 readNC("welcome");
             }
@@ -1225,6 +1226,8 @@ default
             updateText();
             showInfo();
         }
+        else if (message == "send_config")
+            sendConfig();
         else
         {
             list params = llParseString2List(message,[";"],[""]);

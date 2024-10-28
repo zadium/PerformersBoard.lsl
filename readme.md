@@ -38,7 +38,7 @@ Text https://wiki.secondlife.com/wiki/FURWARE_text/Tutorial#Creating_displays
 
 * Import mesh TextMesh8.dae (we need 8 cell), Set LOD to above, name it as "FURWARE text mesh 8"
 * Rez it and set Size to (x, y, z)(0.08, 1, 0.250)
-* Upload "FURWARE text element initializer.lsl" insite that mesh, take it DO not rez it on ground or attach
+* Upload "FURWARE text element initializer.lsl" inside that mesh, take it DO not rez it on ground or attach
 * Take it
 * Make a simple cube, Name it "FURWARE text creator"
 * Copy "FURWARE text mesh 8" inside it
@@ -77,7 +77,7 @@ HomeURI: if you see error when start image, and osGetAvatarHomeURI this function
 
     HomeURI=http://login.osgrid.org/
 
-    HomeURI=http://discoverygrid.net:8002/
+    HomeURI=http://utopiaskyegrid.com:8002/
 
     HomeURI=http://grid.wolfterritories.org:8002/
 
@@ -108,3 +108,8 @@ AskTime: Show time for performer when start, it ask him/her what time he will sp
 Particles: Show Particles when tip, to the performer, you can change the money.png texture
 
     Particles=1
+
+
+## Thanks ##
+
+Special thanks to Rogue Galaxy for testing
