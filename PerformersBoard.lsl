@@ -5,8 +5,8 @@
     @author: Zai Dium
     @source: https://github.com/zadium/PerformersBoard.lsl
     @version: 0.17
-    @updated: "2024-10-28 13:02:53"
-    @revision: 681
+    @updated: "2024-10-28 13:06:47"
+    @revision: 683
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -488,7 +488,12 @@ string getInfo()
     string s = "";
     integer c = llGetListLength(id_list);
     if (c == 0)
-        s = "No performers are signed.";
+    {
+        if (performerID != NULL_KEY)
+            s = "Performer is online.";
+        else
+            s = "No performers are signed yet.";
+    }
     else
     {
         integer i = 0;
