@@ -5,8 +5,8 @@
     @author: Zai Dium
     @source: https://github.com/zadium/PerformersBoard.lsl
     @version: 0.17
-    @updated: "2024-10-28 13:06:47"
-    @revision: 683
+    @updated: "2025-08-03 11:55:21"
+    @revision: 685
     @localfile: ?defaultpath\Performers\?@name.lsl
     @license: MIT
 
@@ -597,10 +597,11 @@ remove(key id){
     }
 }
 
-moveTop(key id){
+moveTop(key id)
+{
     integer index = indexOfID(id);
     if (index >= 0) {
-        key time = llList2Key(time_list, index);
+        integer time = llList2Integer(time_list, index);
         key stream = llList2Key(stream_list, index);
         id_list = [id] + llDeleteSubList(id_list, index, index);
         name_list = [llGetDisplayName(id)] + llDeleteSubList(name_list, index, index);
